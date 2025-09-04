@@ -8,16 +8,16 @@ using BotLib.BotClient;
 using BotLib.Generated;
 using BotLib.Protocols;
 using BotLib.Protocols.Queuing;
+using MarketBot;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Toolkit.HighPerformance;
 using NQ;
 using NQ.Router;
 using NQutils;
 using NQutils.Logging;
 using NQutils.Sql;
 using Orleans;
-using StackExchange.Redis;
-/// Mod base class
+
+
 public class Mod
 {
     public static IDuClientFactory RestDuClientFactory => serviceProvider.GetRequiredService<IDuClientFactory>();
@@ -68,35 +68,8 @@ public class Mod
             .AddSingleton<IDuClientFactory, BotLib.Protocols.GrpcClient.DuClientFactory>()
             .AddSingleton<Backend.Storage.IItemStorageService, Backend.Storage.ItemStorageService>();
 
-        //Register services used by mod.
-        services.AddSingleton<ConnectionMultiplexer>(sp =>
-        {
-            var redisHost = NQutils.Config.Config.Instance.redis.host;
-            var redisPosrt = NQutils.Config.Config.Instance.redis.port;
 
-            var configurator = ConfigurationOptions.Parse($"{redisHost}:{redisPosrt}", true);
-            configurator.DefaultDatabase = 5;
-            return ConnectionMultiplexer.Connect(configurator);
-        });
-
-        services.AddScoped<IDatabase>(sp =>
-        {
-            var connectionMultiplexer = sp.GetRequiredService<ConnectionMultiplexer>();
-            return connectionMultiplexer.GetDatabase();
-        });
-
-        services.Configure<ConfigOptions>(options =>
-        {
-            options.ConfigPath = configPath;
-        });
-        services.AddSingleton<BotConnectionManager>();
-        services.AddSingleton<ModMarketBot>();
-        services.AddSingleton<ConfigService>();
-        services.AddSingleton<CraftingQueue>();
-        services.AddSingleton<IRecipeService, RecipeService>();
-        services.AddSingleton<IMarketService, MarketService>();
-        services.AddSingleton<CraftingQueueService>();
-        services.AddSingleton<BuyOrderMonitorService>();
+        services.AddMarketBot(configPath);
 
         var sp = services.BuildServiceProvider();
         serviceProvider = sp;

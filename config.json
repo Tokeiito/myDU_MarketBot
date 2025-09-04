@@ -3,5 +3,156 @@
         "MarketOperationsTickInSeconds": 60,
         "QueueProcessingTickInSeconds": 5,
         "OperationMarkets": [ 3, 4, 29 ]
+    },
+    "MarketOverlord": {
+        "TickInSeconds": 60,
+        "OperationPlanets": [ 2 ],
+        "OreBaselinePrices": {
+            "1": 25,
+            "2": 35,
+            "3": 45,
+            "4": 55,
+            "5": 65
+        },
+        "TierSettings": {
+            "0": {
+                "Resource": {
+                    "NumberOfBuyOrders": 5,
+                    "NumberOfSellOrders": 1,
+                    "QuantityInInventory": 10000,
+                    "QuantityInSellOrders": 1000,
+                    "QuantityInBuyOrders": 1000
+                },
+                "Component": {
+                    "NumberOfBuyOrders": 5,
+                    "NumberOfSellOrders": 1,
+                    "QuantityInInventory": 200,
+                    "QuantityInSellOrders": 100,
+                    "QuantityInBuyOrders": 50
+                },
+                "Product": {
+                    "NumberOfBuyOrders": 2,
+                    "NumberOfSellOrders": 1,
+                    "QuantityInInventory": 200,
+                    "QuantityInSellOrders": 100,
+                    "QuantityInBuyOrders": 50
+                }
+            },
+            "1": {
+                "Resource": {
+                    "NumberOfBuyOrders": 5,
+                    "NumberOfSellOrders": 5,
+                    "QuantityInInventory": 10000,
+                    "QuantityInSellOrders": 1000,
+                    "QuantityInBuyOrders": 5000
+                },
+                "Component": {
+                    "NumberOfBuyOrders": 5,
+                    "NumberOfSellOrders": 3,
+                    "QuantityInInventory": 500,
+                    "QuantityInSellOrders": 300,
+                    "QuantityInBuyOrders": 200
+                },
+                "Product": {
+                    "NumberOfBuyOrders": 2,
+                    "NumberOfSellOrders": 1,
+                    "QuantityInInventory": 0,
+                    "QuantityInSellOrders": 100,
+                    "QuantityInBuyOrders": 50
+                }
+            },
+            "2": {
+                "Resource": {
+                    "NumberOfBuyOrders": 5,
+                    "NumberOfSellOrders": 3,
+                    "QuantityInInventory": 5000,
+                    "QuantityInSellOrders": 500,
+                    "QuantityInBuyOrders": 2500
+                },
+                "Component": {
+                    "NumberOfBuyOrders": 3,
+                    "NumberOfSellOrders": 2,
+                    "QuantityInInventory": 250,
+                    "QuantityInSellOrders": 150,
+                    "QuantityInBuyOrders": 100
+                },
+                "Product": {
+                    "NumberOfBuyOrders": 1,
+                    "NumberOfSellOrders": 1,
+                    "QuantityInInventory": 0,
+                    "QuantityInSellOrders": 50,
+                    "QuantityInBuyOrders": 25
+                }
+            },
+            "3": {
+                "Resource": {
+                    "NumberOfBuyOrders": 3,
+                    "NumberOfSellOrders": 2,
+                    "QuantityInInventory": 2500,
+                    "QuantityInSellOrders": 250,
+                    "QuantityInBuyOrders": 1250
+                },
+                "Component": {
+                    "NumberOfBuyOrders": 2,
+                    "NumberOfSellOrders": 1,
+                    "QuantityInInventory": 125,
+                    "QuantityInSellOrders": 75,
+                    "QuantityInBuyOrders": 50
+                },
+                "Product": {
+                    "NumberOfBuyOrders": 1,
+                    "NumberOfSellOrders": 1,
+                    "QuantityInInventory": 0,
+                    "QuantityInSellOrders": 25,
+                    "QuantityInBuyOrders": 12
+                }
+            },
+            "4": {
+                "Resource": {
+                    "NumberOfBuyOrders": 2,
+                    "NumberOfSellOrders": 1,
+                    "QuantityInInventory": 1000,
+                    "QuantityInSellOrders": 100,
+                    "QuantityInBuyOrders": 500
+                },
+                "Component": {
+                    "NumberOfBuyOrders": 1,
+                    "NumberOfSellOrders": 1,
+                    "QuantityInInventory": 100,
+                    "QuantityInSellOrders": 50,
+                    "QuantityInBuyOrders": 25
+                },
+                "Product": {
+                    "NumberOfBuyOrders": 1,
+                    "NumberOfSellOrders": 1,
+                    "QuantityInInventory": 0,
+                    "QuantityInSellOrders": 10,
+                    "QuantityInBuyOrders": 5
+                }
+            },
+            "5": {
+                "Resource": {
+                    "NumberOfBuyOrders": 1,
+                    "NumberOfSellOrders": 1,
+                    "QuantityInInventory": 500,
+                    "QuantityInSellOrders": 50,
+                    "QuantityInBuyOrders": 250
+                },
+                "Component": {
+                    "NumberOfBuyOrders": 1,
+                    "NumberOfSellOrders": 1,
+                    "QuantityInInventory": 50,
+                    "QuantityInSellOrders": 25,
+                    "QuantityInBuyOrders": 12
+                },
+                "Product": {
+                    "NumberOfBuyOrders": 1,
+                    "NumberOfSellOrders": 1,
+                    "QuantityInInventory": 0,
+                    "QuantityInSellOrders": 2,
+                    "QuantityInBuyOrders": 1
+                }
+            }
+        }
     }
 }
