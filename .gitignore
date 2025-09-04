@@ -166,4 +166,15 @@ ServiceFabricBackup/
 *.DS_Store
 *.orig
 
+###############
+# Agent Documentation
+###############
+# Exclude all markdown files in root directory except README.md
+*.md
+!README.md
+!Readme.md
+
+# Exclude agent workspace directory (local development only)
+.agent-docs/
+
 # End of Visual Studio.gitignore
