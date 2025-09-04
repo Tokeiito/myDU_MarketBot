@@ -1,54 +1,85 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
+using MarketBot.Interfaces;
 using Microsoft.Extensions.Logging;
 
-public class CraftingQueueService : ICraftingQueueService
+public class CraftingQueueService : ITickable
 {
     private readonly CraftingQueue _craftingQueue;
     private readonly ILogger<CraftingQueueService> _logger;
-    private readonly IMarketService _marketService;
     private readonly ConfigService _configService;
+    private readonly ITickService _tickService;
+    private readonly IInventoryService _inventoryService;
 
     public CraftingQueueService(
         ILogger<CraftingQueueService> logger,
-        IMarketService marketService,
         CraftingQueue craftingQueue,
-        ConfigService configService
+        ConfigService configService,
+        ITickService tickService,
+        IInventoryService inventoryService
         )
     {
         _craftingQueue = craftingQueue;
         _logger = logger;
-        _marketService = marketService;
         _configService = configService;
+        _tickService = tickService;
+        _inventoryService = inventoryService;
+
+
+        _tickService.RegisterTickable(this);
     }
 
-    public void Start()
+    public void Start() {
+        _tickService.Start();
+    }
+
+    public void Tick()
     {
-        Task.Run(async () => await ProcessQueueAsync());
+        try
+        {
+            ProcessQueueAsync().GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occurred during Tick.");
+        }
     }
 
     private async Task ProcessQueueAsync()
     {
-        _logger.LogInformation("Build queue processing started.");
+        _logger.LogInformation("Processing crafting queue.");
 
-        while (true)
+        var jobsToRemove = new List<Guid>();
+
+        foreach (var kvp in _craftingQueue.GetAllJobs())
         {
-            while (_craftingQueue.Count > 0)
+            var jobId = kvp.Key;
+            var job = kvp.Value;
+
+            if (DateTime.UtcNow >= job.CraftingStartTime.Add(job.CraftingDuration))
             {
-                var currentJob = _craftingQueue.Peek();
-                if (DateTime.UtcNow >= currentJob.CraftingStartTime.Add(currentJob.CraftingDuration))
+                try
                 {
-                    await _marketService.HandleCraftedItem(currentJob.ItemId, currentJob.MarketId, currentJob.Quantity);
+                    await _inventoryService.AddUpdate(job.ItemId, job.Quantity, job.MarketId);
+                    _logger.LogInformation($"Processed job ID: {jobId}, ItemId: {job.ItemId}, MarketId: {job.MarketId}");
 
-                    _craftingQueue.Dequeue();
+                    // Mark the job for removal
+                    jobsToRemove.Add(jobId);
                 }
-
-                await Task.Delay(TimeSpan.FromSeconds(_configService.Config.Market.QueueProcessingTickInSeconds));
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"Failed to process job ID: {jobId}, ItemId: {job.ItemId}, MarketId: {job.MarketId}, Quantity: {job.Quantity}");
+                    // Decide whether to remove or keep the job in case of failure
+                }
             }
+        }
 
-            _logger.LogDebug("Finished processing the crafting queue iteration.");
-            // Wait before processing the queue again
-            await Task.Delay(TimeSpan.FromSeconds(_configService.Config.Market.QueueProcessingTickInSeconds));
+        // Remove processed jobs
+        foreach (var jobId in jobsToRemove)
+        {
+            _craftingQueue.Remove(jobId);
         }
     }
 }

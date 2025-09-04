@@ -7,10 +7,9 @@ using BotLib.Generated;
 using BotLib.Utils;
 using Microsoft.Extensions.Logging;
 using NQ;
-using NQ.Interfaces;
 using Orleans;
 
-public class MarketService : IMarketService
+public class MarketService
 {
     private readonly IClusterClient _orleans;
     private readonly IGameplayBank _gameplayBank;
@@ -38,14 +37,14 @@ public class MarketService : IMarketService
 
     public async Task CreateItem(ulong itemTypeId, long quantity)
     {
-        var inventoryGrain = _orleans.GetInventoryGrain(Mod.bot.PlayerId);
-
+        var item = _gameplayBank.GetDefinition(itemTypeId);
 
         var itemAndQuantity = new ItemAndQuantity
         {
-            item = _gameplayBank.GetDefinition(itemTypeId).AsItemInfo(),
-            quantity = _gameplayBank.QuantityFromGDValue(itemTypeId, quantity),
+            item = item.AsItemInfo(),
+            quantity = quantity,
         };
+
         var list = new ItemAndQuantityList();
         list.content.Add(itemAndQuantity);
 
@@ -53,7 +52,7 @@ public class MarketService : IMarketService
             async () =>
             {
                 await Mod.bot.Req.BotGiveItems(list);
-                _logger.LogInformation("Item successfully created in the bot's inventory.");
+                _logger.LogDebug("Item successfully created in the bot's inventory.");
             },
             _botConnectionManager.IsDisconnectedException,
             _botConnectionManager.ReconnectBotAsync
@@ -71,27 +70,30 @@ public class MarketService : IMarketService
             marketId = marketId,
             itemType = itemTypeId,
             buyQuantity = quantity, // Use a positive value for buy order, negative for sell
-            expirationDate = DateTime.Now.AddDays(300).ToNQTimePoint(),
-            unitPrice = (long)(unitPrice * 100) // Convert price to the appropriate format
+            expirationDate = DateTime.Now.AddDays(3).ToNQTimePoint(),
+            unitPrice = (long)(unitPrice * 100), // Convert price to the appropriate format
         };
 
         if (fromMarketContainer)
         {
             marketRequest.source = MarketRequestSource.FROM_MARKET_CONTAINER;
         }
+        else {
+            marketRequest.source = MarketRequestSource.FROM_INVENTORY;
+        }
 
         await RetryHelper.RetryOnExceptionAsync(
         async () =>
         {
             await Mod.bot.Req.MarketPlaceOrder(marketRequest);
-            _logger.LogInformation($"Successfully placed market order for {quantity} of item {itemTypeId} in market {marketId} at price {unitPrice}.");
+            _logger.LogDebug($"Successfully placed market order for {quantity} of item {itemTypeId} in market {marketId} at price {unitPrice}.");
         },
             _botConnectionManager.IsDisconnectedException,
             _botConnectionManager.ReconnectBotAsync
         );
     }
 
-    public async Task<IEnumerable<BuyOrder>> GetBuyOrdersForItem(ulong marketId, ulong itemTypeId)
+    public async Task<IEnumerable<Order>> GetBuyOrdersForItem(ulong marketId, ulong itemTypeId)
     {
         return await RetryHelper.RetryOnExceptionAsync(
             async () =>
@@ -104,7 +106,7 @@ public class MarketService : IMarketService
 
                 var buyOrders = orders.orders
                     .Where(order => order.buyQuantity > 0)
-                    .Select(order => new BuyOrder
+                    .Select(order => new Order
                     {
                         OrderId = order.orderId,
                         ItemId = order.itemType,
@@ -121,65 +123,180 @@ public class MarketService : IMarketService
 
     }
 
-    public async Task HandleCraftedItem(ulong itemId, ulong marketId, long quantity)
+    public async Task<IEnumerable<Order>> GetOrders(ulong itemId, ulong marketId)
     {
-        _logger.LogInformation($"Handling crafted item: {itemId} {marketId} {quantity}");
-        long remainingQuantityToSell = quantity; // Initialize with the total quantity to sell
-        var markets = _configService.Config.Market.OperationMarkets; // Get list of markets from config
+        return await RetryHelper.RetryOnExceptionAsync(
+           async () =>
+           {
+               var orders = await Mod.bot.Req.MarketSelectItem(new MarketSelectRequest
+               {
+                   marketIds = new List<ulong> { marketId },
+                   itemTypes = new List<ulong> { itemId }
+               });
 
-        // Start with the specified marketId, then move to other markets if needed
-        var marketQueue = new Queue<ulong>(markets);
-        marketQueue.Enqueue(marketId); // Ensure the passed marketId is processed first
+               var _orders = orders.orders
+                   .Select(order => new Order
+                   {
+                       OrderId = order.orderId,
+                       ItemId = order.itemType,
+                       Quantity = order.buyQuantity,
+                       Price = order.unitPrice.amount,
+                       MarketId = order.marketId
+                   });
 
-        while (marketQueue.Count > 0 && remainingQuantityToSell > 0)
-        {
-            var currentMarketId = marketQueue.Dequeue();
+               return _orders;
+           },
+           _botConnectionManager.IsDisconnectedException,
+           _botConnectionManager.ReconnectBotAsync
+       );
+    }
 
-            // Retrieve buy orders for the item in the current market
-            var buyOrders = await GetBuyOrdersForItem(currentMarketId, itemId);
+    public async Task<IEnumerable<Order>> GetSellOrders(ulong marketId, ulong itemId)
+    {
+        return await RetryHelper.RetryOnExceptionAsync(
+          async () =>
+          {
+              var orders = await Mod.bot.Req.MarketSelectItem(new MarketSelectRequest
+              {
+                  marketIds = new List<ulong> { marketId },
+                  itemTypes = new List<ulong> { itemId }
+              });
 
-            // Filter and sort buy orders by price (descending to prioritize the highest price)
-            var sortedBuyOrders = buyOrders.OrderByDescending(order => order.Price);
+              var _orders = orders.orders
+                  .Where(order => order.buyQuantity < 0)
+                  .Select(order => new Order
+                  {
+                      OrderId = order.orderId,
+                      ItemId = order.itemType,
+                      Quantity = Math.Abs(order.buyQuantity),
+                      Price = order.unitPrice.amount,
+                      MarketId = order.marketId
+                  });
 
-            // Process each buy order until we run out of quantity to sell
-            foreach (var buyOrder in sortedBuyOrders)
-            {
-                if (remainingQuantityToSell <= 0)
-                {
-                    return;
-                }
+              return _orders;
+          },
+          _botConnectionManager.IsDisconnectedException,
+          _botConnectionManager.ReconnectBotAsync
+      );
+    }
 
-                var quantityToSell = Math.Min(remainingQuantityToSell, buyOrder.Quantity);
+    public async Task<IEnumerable<Order>> GetSellOrders(ulong marketId, List<ulong> itemIds)
+    {
+        return await RetryHelper.RetryOnExceptionAsync(
+          async () =>
+          {
+              var orders = await Mod.bot.Req.MarketSelectItem(new MarketSelectRequest
+              {
+                  marketIds = new List<ulong> { marketId },
+                  itemTypes = itemIds
+              });
 
-                await CreateItem(itemId, quantityToSell);
+              var _orders = orders.orders
+                  .Where(order => order.buyQuantity < 0)
+                  .Select(order => new Order
+                  {
+                      OrderId = order.orderId,
+                      ItemId = order.itemType,
+                      Quantity = Math.Abs(order.buyQuantity),
+                      Price = order.unitPrice.amount,
+                      MarketId = order.marketId,
+                      Expiration = order.expirationDate
+                  });
 
-                await RetryHelper.RetryOnExceptionAsync(
-                    async () =>
-                    {
-                        // Create the instant market order to sell the items
-                        await Mod.bot.Req.MarketInstantOrder(new MarketRequest
+              return _orders;
+          },
+          _botConnectionManager.IsDisconnectedException,
+          _botConnectionManager.ReconnectBotAsync
+      );
+    }
+
+    public async Task<IEnumerable<Order>> GetItemsForTierAsync(int currentTier, ulong marketId) {
+
+        List<ulong> items = await _recipeService.GetItemIdsByTier(currentTier);
+
+        return await RetryHelper.RetryOnExceptionAsync(
+           async () =>
+           {
+               var orders = await Mod.bot.Req.MarketSelectItem(new MarketSelectRequest
+               {
+                   marketIds = new List<ulong> { marketId },
+                   itemTypes = items
+               });
+
+               var _orders = orders.orders
+                   .Select(order => new Order
+                   {
+                       OrderId = order.orderId,
+                       ItemId = order.itemType,
+                       Quantity = order.buyQuantity,
+                       Price = order.unitPrice.amount,
+                       MarketId = order.marketId
+                   });
+
+               return _orders;
+           },
+           _botConnectionManager.IsDisconnectedException,
+           _botConnectionManager.ReconnectBotAsync
+       );
+    }
+
+    internal async Task<IEnumerable<Item>> GetMarketInventoryAsync(ulong marketId)
+    {
+        return await RetryHelper.RetryOnExceptionAsync(
+                async () => {
+                    var items = await Mod.bot.Req.MarketContainerGetMyContent(new MarketSelectRequest
                         {
-                            marketId = currentMarketId,
-                            source = MarketRequestSource.FROM_INVENTORY, // Assuming inventory is the source
-                            itemType = itemId,
-                            buyQuantity = -quantityToSell, // Negative because we are selling
-                            unitPrice = buyOrder.Price,          // Price from the buy order
-                            orderId = buyOrder.OrderId           // The buy order we are fulfilling
-                        });
-                    },
-                    _botConnectionManager.IsDisconnectedException,
-                    _botConnectionManager.ReconnectBotAsync
-                );
-                _logger.LogInformation($"Sold {quantityToSell} of item {itemId} at price {buyOrder.Price} in market {currentMarketId}.");
+                            marketIds = new List<ulong> { marketId },
+                            ownerId =  Mod.bot.AsEntityId(),
+                        }
+                    );
 
-                // Reduce the total quantity to sell
-                remainingQuantityToSell -= quantityToSell;
-            }
-        }
+                    var _orders = items.slots.Where(item => item.purchased == true).Select(item => new Item{
+                        Id = item.itemAndQuantity.item.type,
+                        ItemType = Mod.bot.GameplayBank.GetDefinition(item.itemAndQuantity.item.type).GetStaticPropertyOpt("inventoryType").stringValue,
+                        Quantity = item.itemAndQuantity.quantity.value
+                    });
 
-        if (remainingQuantityToSell > 0)
-        {
-            _logger.LogWarning($"Remaining {remainingQuantityToSell} units of item {itemId} were not sold due to lack of buy orders.");
-        }
+                    return _orders;
+                },
+                _botConnectionManager.IsDisconnectedException,
+                _botConnectionManager.ReconnectBotAsync
+            );
+    }
+
+    internal async Task MoveItemFromMarketToInventory(ulong marketId, ulong itemId, long quantity) {
+
+        await RetryHelper.RetryOnExceptionAsync(
+                async () => {
+                    await Mod.bot.Req.MarketStorageMove(
+                                new MarketStorageMoveInfo
+                                {
+                                    marketId = marketId,
+                                    itemType = itemId,
+                                    quantity = quantity,
+                                    itemOwner = Mod.bot.AsEntityId(),
+                                }
+                                );
+                },
+                _botConnectionManager.IsDisconnectedException,
+                _botConnectionManager.ReconnectBotAsync
+            );
+    }
+
+    internal async Task CancelOrder(ulong marketId, ulong orderId, ulong itemId)
+    {
+        await RetryHelper.RetryOnExceptionAsync(
+               async () =>
+               {
+                   await Mod.bot.Req.MarketCancelOrder(new MarketOrder
+                   {
+                       marketId = marketId,
+                       orderId = orderId,
+                       itemType = itemId
+                   });
+               },
+               _botConnectionManager.IsDisconnectedException,
+               _botConnectionManager.ReconnectBotAsync
+               );
     }
 }
