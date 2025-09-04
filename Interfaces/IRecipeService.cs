@@ -24,4 +24,9 @@ public interface IRecipeService
     // Retrieves recipes where the given item is an ingredient and matches the specific tier
     Task<List<Recipe>> GetRecipesItemIsIngredientTier(ulong itemId, int tier_of_recipe);
     Task<Resource> GetResourceAsync(ulong itemTypeId);
+    Task<List<ulong>> GetItemsByType(int tier, ItemType resource);
+    Task<Recipe> GetRecipeAsync(ulong itemId);
+    Task<ItemType> GetType(ulong id);
+    Task<List<ulong>> GetItemIdsByTier(int currentTier);
+    Task<int> GetTier(ulong itemId);
 }
