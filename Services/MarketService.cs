@@ -37,6 +37,13 @@ public class MarketService
 
     public async Task CreateItem(ulong itemTypeId, long quantity)
     {
+        // Check if dry-run mode is enabled
+        if (_configService.Config.Development.DryRun)
+        {
+            _logger.LogInformation("[DRY-RUN] CreateItem: Would create {Quantity} items of type {ItemTypeId}", quantity, itemTypeId);
+            return;
+        }
+
         var item = _gameplayBank.GetDefinition(itemTypeId);
 
         var itemAndQuantity = new ItemAndQuantity
@@ -62,6 +69,16 @@ public class MarketService
     public async Task PlaceMarketOrder(ulong marketId, ulong itemTypeId, long quantity, double unitPrice, bool sell = false, bool fromMarketContainer = false)
     {
         quantity = sell ? quantity * -1 : quantity;
+
+        // Check if dry-run mode is enabled
+        if (_configService.Config.Development.DryRun)
+        {
+            var orderType = sell ? "sell" : "buy";
+            var source = fromMarketContainer ? "market container" : "inventory";
+            _logger.LogInformation("[DRY-RUN] PlaceMarketOrder: Would place {OrderType} order for {Quantity} items of type {ItemTypeId} in market {MarketId} at price {UnitPrice} from {Source}", 
+                orderType, Math.Abs(quantity), itemTypeId, marketId, unitPrice, source);
+            return;
+        }
 
         _logger.LogInformation($"Placing market order for item {itemTypeId} in market {marketId}. Quantity: {quantity}, Price per unit: {unitPrice}.");
 
@@ -266,6 +283,14 @@ public class MarketService
 
     internal async Task MoveItemFromMarketToInventory(ulong marketId, ulong itemId, long quantity) {
 
+        // Check if dry-run mode is enabled
+        if (_configService.Config.Development.DryRun)
+        {
+            _logger.LogInformation("[DRY-RUN] MoveItemFromMarketToInventory: Would move {Quantity} items of type {ItemId} from market {MarketId} to inventory", 
+                quantity, itemId, marketId);
+            return;
+        }
+
         await RetryHelper.RetryOnExceptionAsync(
                 async () => {
                     await Mod.bot.Req.MarketStorageMove(
@@ -285,6 +310,14 @@ public class MarketService
 
     internal async Task CancelOrder(ulong marketId, ulong orderId, ulong itemId)
     {
+        // Check if dry-run mode is enabled
+        if (_configService.Config.Development.DryRun)
+        {
+            _logger.LogInformation("[DRY-RUN] CancelOrder: Would cancel order {OrderId} for item {ItemId} in market {MarketId}", 
+                orderId, itemId, marketId);
+            return;
+        }
+
         await RetryHelper.RetryOnExceptionAsync(
                async () =>
                {

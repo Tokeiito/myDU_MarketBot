@@ -3,7 +3,7 @@ FROM debian:bookworm AS nq_server_build
 ADD https://packages.microsoft.com/config/debian/10/packages-microsoft-prod.deb /tmp/packages-microsoft-prod.deb
 RUN apt update && apt install -y ca-certificates && \
 dpkg -i /tmp/packages-microsoft-prod.deb && \
-apt update && apt install -y dotnet-sdk-7.0
+apt update && apt install -y dotnet-sdk-8.0
 
 COPY . /source
 RUN cd /source && dotnet publish --self-contained \

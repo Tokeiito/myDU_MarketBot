@@ -67,7 +67,7 @@ public class Mod
             )
             .AddSingleton<IDuClientFactory, BotLib.Protocols.GrpcClient.DuClientFactory>()
             .AddSingleton<Backend.Storage.IItemStorageService, Backend.Storage.ItemStorageService>()
-            .AddSingleton<Backend.IRecipes, Backend.Recipes>();
+            .AddSingleton<IRecipes, Recipes>();
 
 
 

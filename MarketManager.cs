@@ -110,6 +110,13 @@ namespace MarketBot
             {
                 try
                 {
+                    // In dry-run mode, CreateItem will be logged but not executed at MarketService layer
+                    if (_configService.Config.Development.DryRun)
+                    {
+                        _logger.LogInformation("[DRY-RUN] ProcessBotInventory: Processing bot inventory item {ItemId} (Quantity: {Quantity}, Type: {ItemType})", 
+                            item.Id, item.Quantity, item.ItemType);
+                    }
+                    
                     await _marketService.CreateItem(item.Id, item.Quantity * -1);
                     await _inventoryService.AddUpdate(item.Id, item.Quantity, null);
                 }
@@ -283,6 +290,13 @@ namespace MarketBot
 
             try
             {
+                // Add contextual logging for dry-run mode
+                if (_configService.Config.Development.DryRun)
+                {
+                    _logger.LogInformation("[DRY-RUN] ExecuteSellOrder: Attempting to create sell order for {Quantity} of item {ItemId} in market {MarketId} at price {Price}", 
+                        quantityToSell, itemId, marketId, price);
+                }
+                
                 await _marketService.CreateItem(itemId, quantityToSell);
 
                 await _marketService.PlaceMarketOrder(marketId, itemId, quantityToSell, price, true, false);
@@ -297,6 +311,13 @@ namespace MarketBot
                 {
                     _logger.LogError(ex, $"Sell order failed for item {itemId} in market {marketId}, quantity {quantityToSell}. Rolling back item creation.");
 
+                    // Add contextual logging for dry-run mode rollback
+                    if (_configService.Config.Development.DryRun)
+                    {
+                        _logger.LogInformation("[DRY-RUN] ExecuteSellOrder: Rollback - would remove {Quantity} items of type {ItemId}", 
+                            quantityToSell, itemId);
+                    }
+                    
                     // Rollback the item creation: remove the created item from the inventory
                     await _marketService.CreateItem(itemId, -quantityToSell);
 
@@ -325,6 +346,13 @@ namespace MarketBot
 
                 try
                 {
+                    // Add contextual logging for dry-run mode
+                    if (_configService.Config.Development.DryRun)
+                    {
+                        _logger.LogInformation("[DRY-RUN] ExecuteBuyOrder: Attempting to create buy order for {Quantity} of item {ItemId} in market {MarketId} at price {Price} (Wallet: {Money})", 
+                            quantity, itemId, marketId, price, money);
+                    }
+                    
                     await _marketService.PlaceMarketOrder(marketId, itemId, quantity, price);
 
                     _logger.LogInformation($"Created buy order for {quantity} of item {itemId} in market {marketId}.");
@@ -345,6 +373,13 @@ namespace MarketBot
                 var invItemQ = await _inventoryService.Get(item.Id, marketId);
                 try
                 {
+                    // Add contextual logging for dry-run mode
+                    if (_configService.Config.Development.DryRun)
+                    {
+                        _logger.LogInformation("[DRY-RUN] ProcessMarketInventory: Processing market inventory item {ItemId} (Quantity: {Quantity}) in market {MarketId}", 
+                            item.Id, item.Quantity, marketId);
+                    }
+                    
                     // Move to inventory
                     await _marketService.MoveItemFromMarketToInventory(marketId, item.Id, item.Quantity);
 

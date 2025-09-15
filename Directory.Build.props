@@ -3,7 +3,7 @@
     <RUNTIME_ID Condition="'$(RUNTIME_ID)' == ''">linux-x64</RUNTIME_ID>
   </PropertyGroup>
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <RuntimeIdentifier>$(RUNTIME_ID)</RuntimeIdentifier>
     <TargetLatestRuntimePatch>true</TargetLatestRuntimePatch>
     <GenerateFullPaths>true</GenerateFullPaths>

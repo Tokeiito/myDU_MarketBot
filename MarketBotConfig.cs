@@ -5,6 +5,8 @@ public class MarketBotConfig
     public MarketSettings Market { get; set; } = new MarketSettings();
 
     public MarketOverlordSettings MarketOverlord { get; set;} = new MarketOverlordSettings();
+
+    public DevelopmentSettings Development { get; set; } = new DevelopmentSettings();
 }
 
 public class MarketSettings
@@ -31,4 +33,9 @@ public class MarketOverlordQuantities
     public int QuantityInInventory { get; set; }
     public int QuantityInSellOrders { get; set; }
     public int QuantityInBuyOrders { get; set; }
+}
+
+public class DevelopmentSettings
+{
+    public bool DryRun { get; set; } = false; // Default to false for production safety
 }

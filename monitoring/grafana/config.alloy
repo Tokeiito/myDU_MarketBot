@@ -1,0 +1,46 @@
+
+local.file_match "marketbot_logs" {
+    path_targets = [
+        {
+            __path__ = "/var/log/marketbot/**/*.json",
+            service_name = "marketbot",
+        },
+    ]
+
+    sync_period = "5s"
+}
+
+loki.source.file "marketbot_logs" {
+  targets = local.file_match.marketbot_logs.targets
+  tail_from_end = false
+  forward_to = [loki.process.marketbot_router.receiver]
+}
+
+loki.process "marketbot_router" {
+
+  stage.json {
+    expressions = {
+      level     = "level",
+      timestamp = "timestamp", 
+      message   = "message",
+      component = "component",
+    }
+  }
+
+  stage.labels {
+    values = {
+      service_name = "marketbot",
+      level = "",
+      component = "",
+    }
+  }
+
+  forward_to = [loki.write.default.receiver]
+}
+
+// Loki write configuration - sends logs to your Loki instance
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

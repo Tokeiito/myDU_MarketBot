@@ -154,5 +154,8 @@
                 }
             }
         }
+    },
+    "Development": {
+        "DryRun": true
     }
 }
