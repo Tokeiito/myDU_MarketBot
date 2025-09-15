@@ -18,20 +18,36 @@ loki.source.file "marketbot_logs" {
 
 loki.process "marketbot_router" {
 
+  // Group multi-line, pretty-printed JSON into a single log entry
+  stage.multiline {
+    firstline     = "^\\s*\\{"
+    max_wait_time = "2s"
+    max_lines     = 1000
+  }
+
+  // Extract fields from the JSON payload
   stage.json {
     expressions = {
-      level     = "level",
-      timestamp = "timestamp", 
-      message   = "message",
-      component = "component",
+      level        = "level",
+      logger       = "logger",
+      appkind      = "appkind",
+      timestamp_ns = "timestamp_ns",
+      message      = "message",
     }
   }
 
+  // Use the original high-precision timestamp from the log entry
+  stage.timestamp {
+    source = "timestamp_ns"
+    format = "UnixNs"
+  }
+
+  // Minimal labels; keep the full JSON as the log line for query-time parsing
   stage.labels {
     values = {
       service_name = "marketbot",
-      level = "",
-      component = "",
+      level        = "",
+      logger       = "",
     }
   }
 
