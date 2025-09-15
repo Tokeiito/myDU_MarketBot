@@ -235,31 +235,44 @@ For each tier (T0-T5), configure behavior for each item type:
 3. **Build and Deploy:**
    ```bash
    # Build Docker image
-   docker build -f Dockerfile.runtime -t marketbot .
+   docker build -f Dockerfile -t marketbot .
    ```
 
-4. **Docker Compose Integration:**
-   Add to your myDU server's `docker-compose.yaml`:
+4. **Docker Compose (recommended):**
+   A ready-to-use compose file is provided as `docker-compose.yml`. It will:
+   - Build from the local `Dockerfile`
+   - Use a `.env` file for credentials
+   - Mount `config.json` and your `dual.yaml` as read-only
+   - Join the existing `mydu` network
+
+   Example `.env`:
+   ```env
+   BOT_LOGIN=trader
+   BOT_PASSWORD=secret
+   # Optional if needed by your environment
+   # QUEUEING=http://queueing:9630
+   ```
+
+   Compose file excerpt:
    ```yaml
-   marketbot:
-     build:
-       context: /path/to/MarketBot
-       dockerfile: Dockerfile.runtime
-     container_name: mod_MarketBot
-     pull_policy: never
-     command: /config/dual.yaml
-     volumes:
-       - ${CONFPATH}:/config
-       - ${LOGPATH}:/logs
-       - /path/to/MarketBot/config.json:/Mod/config.json
-     environment:
-       BOT_LOGIN: trader
-       BOT_PASSWORD: secret
-       QUEUEING: http://queueing:9630
-     restart: always
-     networks:
-       vpcbr:
-         ipv4_address: 10.5.0.50
+   version: "3.8"
+   services:
+     marketbot:
+       build:
+         context: .
+         dockerfile: Dockerfile
+       container_name: marketbot
+       restart: unless-stopped
+       env_file:
+         - .env
+       volumes:
+         - ./config.json:/Mod/config.json:ro
+         - D:/DualUniverseServer/config/dual.yaml:/config/dual.yaml:ro
+       networks:
+         - mydu
+   networks:
+     mydu:
+       external: true
    ```
 
 ### Development Setup
@@ -271,7 +284,7 @@ dotnet build
 # Run locally with configuration
 $env:BOT_LOGIN="trader"
 $env:BOT_PASSWORD="secret"
-$env:QUEUEING="http://queueing:9630"
+# $env:QUEUEING="http://queueing:9630"  # Optional if your environment needs it
 dotnet run -- /config/dual.yaml /Mod/config.json
 ```
 

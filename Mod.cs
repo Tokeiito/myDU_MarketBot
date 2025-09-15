@@ -66,7 +66,9 @@ public class Mod
                 sp => new RealQueuing(qurl, sp.GetRequiredService<IHttpClientFactory>().CreateClient())
             )
             .AddSingleton<IDuClientFactory, BotLib.Protocols.GrpcClient.DuClientFactory>()
-            .AddSingleton<Backend.Storage.IItemStorageService, Backend.Storage.ItemStorageService>();
+            .AddSingleton<Backend.Storage.IItemStorageService, Backend.Storage.ItemStorageService>()
+            .AddSingleton<Backend.IRecipes, Backend.Recipes>();
+
 
 
         services.AddMarketBot(configPath);
