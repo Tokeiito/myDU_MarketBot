@@ -98,19 +98,19 @@ namespace MarketBot.Services
                 long totalIngredientCost = 0;
 
                 // Step 1: Calculate the cost of each ingredient
-                foreach (var ingredient in recipe.Ingredients)
+                foreach (var ingredient in recipe.ingredients)
                 {
-                    var ingredientPrice = await GetPrice(ingredient.Id, marketId);
-                    totalIngredientCost += (long)(ingredientPrice * ingredient.Quantity);
+                    var ingredientPrice = await GetPrice(ingredient.itemId, marketId);
+                    totalIngredientCost += (long)(ingredientPrice * ingredient.quantity.quantity);
                 }
 
                 // Step 2: Calculate the number of products produced by the recipe
-                var product = recipe.Products.FirstOrDefault(p => p.Id == itemId);
+                var product = recipe.products.FirstOrDefault(p => p.itemId == itemId);
 
-                if (product != null && product.Quantity > 0)
+                if (product != null && product.quantity.quantity > 0)
                 {
                     // Step 3: Divide the total cost by the number of products to get the cost per unit
-                    long costPerProduct = totalIngredientCost / product.Quantity;
+                    long costPerProduct = totalIngredientCost / (long)product.quantity.quantity;
                     return costPerProduct;
                 }
                 else

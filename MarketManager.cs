@@ -262,7 +262,7 @@ namespace MarketBot
                     var craftingJob = new CraftingJob();
                     craftingJob.MarketId = marketId;
                     craftingJob.ItemId = itemId;
-                    craftingJob.CraftingDuration = TimeSpan.FromSeconds(recipe.Time);
+                    craftingJob.CraftingDuration = TimeSpan.FromSeconds(recipe.time);
                     craftingJob.Quantity = requiredCraftingQuantity;
                     craftingJob.CraftingStartTime = DateTime.UtcNow;
 
