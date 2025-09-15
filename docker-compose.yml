@@ -1,0 +1,20 @@
+version: "3.8"
+
+services:
+  marketbot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: marketbot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./config.json:/Mod/config.json:ro
+      - "D:/DualUniverseServer/config/dual.yaml:/config/dual.yaml:ro"
+    networks:
+      - mydu
+
+networks:
+  mydu:
+    external: true
