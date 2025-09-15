@@ -21,6 +21,7 @@ services:
     command: -config.file=/etc/loki/loki-config.yaml
     volumes:
       - ./monitoring/loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro
+      - loki-data:/loki
     networks:
         - dualuniverseserver_vpcbr
   
@@ -31,6 +32,7 @@ services:
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
       - GF_AUTH_ANONYMOUS_HIDE_VERSION=true
       - GF_FEATURE_TOGGLES_ENABLE=alertingSimplifiedRouting,alertingQueryAndExpressionsStepMode
+      - GF_INSTALL_PLUGINS=grafana-lokiexplore-app
     entrypoint:
       - sh
       - -euc
@@ -78,6 +80,7 @@ services:
 volumes:
   alloy-data:
     driver: local
+  loki-data: {}
 
 networks:
   dualuniverseserver_vpcbr:

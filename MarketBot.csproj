@@ -37,6 +37,7 @@
   <ItemGroup>
     <Folder Include="Helpers\" />
     <Folder Include="lib\" />
+    <Folder Include="logs\dev\" />
     <Folder Include="Properties\" />
   </ItemGroup>
 
