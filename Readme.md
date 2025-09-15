@@ -205,8 +205,8 @@ For each tier (T0-T5), configure behavior for each item type:
 
 ### Advanced Configuration
 
-- **Recipe Management:** Edit `Data/recipes.json` to remove unwanted recipes
-- **Market Selection:** Configure specific markets in `Data/markets.json`
+- **Market Selection:** Configure specific markets in `OperationMarkets` within `config.json`
+- **Planet Selection:** Configure specific planets in `OperationPlanets` within `config.json`  
 - **Baseline Pricing:** Adjust `OreBaselinePrices` for different economic conditions
 - **Performance Tuning:** Adjust tick intervals and batch sizes for your server
 
