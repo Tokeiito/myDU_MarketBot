@@ -174,7 +174,6 @@ ServiceFabricBackup/
 !README.md
 !Readme.md
 
-# Exclude agent workspace directory (local development only)
-.agent-docs/
-
 # End of Visual Studio.gitignore
+.agent-docs/
+.serena
