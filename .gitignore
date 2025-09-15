@@ -181,3 +181,5 @@ ServiceFabricBackup/
 # MarketBot logs directory
 logs/*
 !logs/.gitkeep
+
+startup_logs.txt
