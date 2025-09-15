@@ -10,6 +10,7 @@ services:
     volumes:
       - ./config.json:/Mod/config.json:ro
       - "D:/DualUniverseServer/config/dual.yaml:/config/dual.yaml:ro"
+      - ./logs:/logs
     networks:
       - dualuniverseserver_vpcbr
   

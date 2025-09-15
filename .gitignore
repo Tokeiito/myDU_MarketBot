@@ -177,3 +177,7 @@ ServiceFabricBackup/
 # End of Visual Studio.gitignore
 .agent-docs/
 .serena
+
+# MarketBot logs directory
+logs/*
+!logs/.gitkeep
