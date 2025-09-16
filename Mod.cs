@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Backend;
+using MarketBot.Services;
 using Backend.Business;
 using BotLib.BotClient;
 using BotLib.Generated;
@@ -81,6 +82,11 @@ public class Mod
         orleans = serviceProvider.GetRequiredService<IClusterClient>();
         dataAccessor = serviceProvider.GetRequiredService<IDataAccessor>();
 
+        // Start metrics system manually since we don't use standard ASP.NET Core hosting
+        var metricsCalculator = serviceProvider.GetRequiredService<BackgroundMetricsCalculator>();
+        await metricsCalculator.StartAsync(default);
+        Console.WriteLine("Metrics system started");
+        
         Console.WriteLine("Creating BOT User");
         bot = await RefreshClient();
         Console.WriteLine("BOT User Created");

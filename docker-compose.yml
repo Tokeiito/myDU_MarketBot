@@ -47,9 +47,21 @@ services:
           orgId: 1
           url: http://loki:3100
           basicAuth: false
+          isDefault: false
+          version: 1
+          editable: false
+        - name: Prometheus (DU Server)
+          type: prometheus
+          access: proxy
+          orgId: 1
+          url: http://dualuniverseserver-prometheus-1:9090
+          basicAuth: false
           isDefault: true
           version: 1
           editable: false
+          jsonData:
+            timeInterval: '30s'
+            queryTimeout: '60s'
         EOF
         /run.sh
     image: grafana/grafana:latest
@@ -75,7 +87,6 @@ services:
       - dualuniverseserver_vpcbr
     depends_on:
       - loki
-
 
 volumes:
   alloy-data:

@@ -60,3 +60,10 @@ loki.write "default" {
     url = "http://loki:3100/loki/api/v1/push"
   }
 }
+
+// ============================================================================
+// METRICS HANDLING SIMPLIFIED
+// ============================================================================
+// MarketBot metrics are now scraped directly by DU Prometheus server
+// This eliminates the need for Alloy to handle metrics via remote_write
+// Much simpler and more reliable architecture!

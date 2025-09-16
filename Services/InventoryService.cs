@@ -2,19 +2,82 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using MarketBot.Interfaces;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 
-public class InventoryService : IInventoryService
+public class InventoryService : IInventoryService, IMetricsProvider
 {
     private readonly IDatabase _redisDatabase;
     private readonly ILogger<IInventoryService> _logger;
+    private readonly IMetricsService _metricsService;
 
-    public InventoryService(IDatabase redisDatabase, ILogger<IInventoryService> logger)
+    public InventoryService(IDatabase redisDatabase, ILogger<IInventoryService> logger, IMetricsService metricsService)
     {
         _redisDatabase = redisDatabase;
         _logger = logger;
+        _metricsService = metricsService;
     }
+
+    #region IMetricsProvider Implementation
+
+    public string ProviderName => "inventory";
+
+    public IEnumerable<string> SimpleMetrics => new[]
+    {
+        "inventory_items_total",
+        "inventory_items_per_market",
+        "inventory_operations_total"
+    };
+
+    public IEnumerable<string> ComplexMetrics => new string[0]; // No complex metrics until we have real data
+
+    public async Task InitializeMetrics(IMetricsService metricsService)
+    {
+        try
+        {
+            // Calculate total global items
+            var globalItems = await GetAll(null);
+            metricsService.SetGauge("inventory_items_total", globalItems.Count);
+            
+            // Calculate items per market (markets 1-5)
+            var totalMarketItems = 0;
+            for (ulong marketId = 1; marketId <= 5; marketId++)
+            {
+                var marketItems = await GetAll(marketId);
+                var count = marketItems.Count;
+                metricsService.SetGauge("inventory_items_per_market", new[] { marketId.ToString() }, count);
+                totalMarketItems += count;
+            }
+
+            _logger.LogInformation("Initialized inventory metrics: {GlobalItems} global, {MarketItems} market items", 
+                globalItems.Count, totalMarketItems);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to initialize inventory metrics");
+        }
+    }
+
+    public async Task CalculateComplexMetrics(IMetricsService metricsService)
+    {
+        // No complex metrics implemented yet - waiting for real business requirements
+        // Complex metrics will be added when we have:
+        // - Price service integration for inventory value calculations
+        // - Historical data for turnover rate analysis
+        // - Business logic for meaningful derived metrics
+        
+        await Task.CompletedTask; // Placeholder to satisfy interface
+        _logger.LogDebug("No complex inventory metrics to calculate yet");
+    }
+
+    // Complex metric calculation methods removed
+    // Will be implemented when we have:
+    // - IPriceService integration for real item values
+    // - Historical inventory data for turnover calculations
+    // - Business requirements for specific derived metrics
+
+    #endregion
 
     // Function to get all items; marketId is optional.
     public async Task<Dictionary<ulong, string>> GetAll(ulong? marketId = null)
@@ -57,10 +120,19 @@ public class InventoryService : IInventoryService
             if (marketId.HasValue)
             {
                 await _redisDatabase.HashSetAsync(marketKey, itemId.ToString(), currentMarketQuantity + value);
+                // Update metrics for market-specific items
+                _metricsService.Increment("inventory_operations_total");
+                _metricsService.SetGauge("inventory_items_per_market", new[] { marketId.ToString() }, currentMarketQuantity + value);
             }
             else
             {
                 await _redisDatabase.HashSetAsync(globalKey, itemId.ToString(), currentGlobalQuantity + value);
+                // Update metrics for global items
+                _metricsService.Increment("inventory_operations_total");
+                if (currentGlobalQuantity == 0) // New item added
+                {
+                    _metricsService.Increment("inventory_items_total");
+                }
             }
         }
         // Case 2: Reduce quantity (split between global and market if necessary)
@@ -74,19 +146,36 @@ public class InventoryService : IInventoryService
             if (currentGlobalQuantity >= remainingReduction)
             {
                 // If global inventory can cover the reduction, just reduce it
-                await _redisDatabase.HashSetAsync(globalKey, itemId.ToString(), currentGlobalQuantity - remainingReduction);
+                var newQuantity = currentGlobalQuantity - remainingReduction;
+                await _redisDatabase.HashSetAsync(globalKey, itemId.ToString(), newQuantity);
+                
+                // Update metrics
+                _metricsService.Increment("inventory_operations_total");
+                if (newQuantity == 0) // Item completely removed
+                {
+                    _metricsService.Decrement("inventory_items_total");
+                }
             }
             else
             {
                 // If global inventory cannot fully cover the reduction, reduce it to zero and reduce the market
                 await _redisDatabase.HashSetAsync(globalKey, itemId.ToString(), 0);
+                _metricsService.Increment("inventory_operations_total");
+                if (currentGlobalQuantity > 0) // Item removed from global
+                {
+                    _metricsService.Decrement("inventory_items_total");
+                }
                 remainingReduction -= currentGlobalQuantity;
 
                 // Step 2: Reduce remaining quantity from market inventory (if applicable)
                 if (marketId.HasValue && currentMarketQuantity > 0)
                 {
                     long marketReduction = Math.Min(currentMarketQuantity, remainingReduction);
-                    await _redisDatabase.HashSetAsync(marketKey, itemId.ToString(), currentMarketQuantity - marketReduction);
+                    var newMarketQuantity = currentMarketQuantity - marketReduction;
+                    await _redisDatabase.HashSetAsync(marketKey, itemId.ToString(), newMarketQuantity);
+                    
+                    // Update market metrics
+                    _metricsService.SetGauge("inventory_items_per_market", new[] { marketId.ToString() }, newMarketQuantity);
                     remainingReduction -= marketReduction;
                 }
 
@@ -102,8 +191,22 @@ public class InventoryService : IInventoryService
     // Function to delete an item; marketId is optional.
     public async Task Delete(ulong itemId, ulong? marketId = null)
     {
+        // Check current quantity before deletion for metrics
+        var currentQuantity = await Get(itemId, marketId);
+        
         var key = marketId.HasValue ? $"inventory:{marketId}:items" : "inventory:global:items";
         await _redisDatabase.HashDeleteAsync(key, itemId.ToString());
+        
+        // Update metrics
+        _metricsService.Increment("inventory_operations_total");
+        if (!marketId.HasValue && currentQuantity > 0)
+        {
+            _metricsService.Decrement("inventory_items_total");
+        }
+        else if (marketId.HasValue)
+        {
+            _metricsService.SetGauge("inventory_items_per_market", new[] { marketId.ToString() }, 0);
+        }
     }
 
     // Function to clean the inventory; marketId is optional.
@@ -111,5 +214,16 @@ public class InventoryService : IInventoryService
     {
         var key = marketId.HasValue ? $"inventory:{marketId}:items" : "inventory:global:items";
         await _redisDatabase.KeyDeleteAsync(key);
+        
+        // Reset metrics
+        _metricsService.Increment("inventory_operations_total");
+        if (!marketId.HasValue)
+        {
+            _metricsService.SetGauge("inventory_items_total", 0);
+        }
+        else
+        {
+            _metricsService.SetGauge("inventory_items_per_market", new[] { marketId.ToString() }, 0);
+        }
     }
 }

@@ -28,8 +28,7 @@ namespace MarketBot
             CraftingQueue craftingQueue,
             IPriceService priceService,
             IDataAccessor dataAccessor,
-            BotConnectionManager botConnectionManager,
-            StatisticsScheduler statisticsScheduler
+            BotConnectionManager botConnectionManager
             )
         {
             _tickService = tickService;
@@ -61,7 +60,7 @@ namespace MarketBot
                 _tickService.RegisterTickable(marketManager);
             }
 
-            _tickService.RegisterTickable(statisticsScheduler);
+            // StatisticsScheduler removed - metrics now handled by InventoryService + BackgroundMetricsCalculator
         }
 
         public void Start()

@@ -1,6 +1,7 @@
 using MarketBot.Interfaces;
 using MarketBot.Services;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using StackExchange.Redis;
 
 namespace MarketBot
@@ -41,8 +42,13 @@ namespace MarketBot
             services.AddSingleton<ITickService, TickService>();
             services.AddSingleton<IInventoryService, InventoryService>();
             services.AddSingleton<IPriceService, PriceService>();
-            services.AddSingleton<InventoryStatisticsService>();
-            services.AddSingleton<StatisticsScheduler>();
+            
+            // Register metrics infrastructure
+            services.AddSingleton<IMetricsService, MetricsService>();
+            services.AddSingleton<BackgroundMetricsCalculator>();
+            
+            // Explicitly register services as IMetricsProvider so they can be discovered
+            services.AddSingleton<IMetricsProvider>(provider => provider.GetRequiredService<IInventoryService>() as IMetricsProvider);
 
             return services;
         }
