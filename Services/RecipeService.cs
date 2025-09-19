@@ -259,6 +259,7 @@ public class RecipeService : IRecipeService
     public async Task<int> GetTier(ulong itemId) 
     {
         var type = await GetType(itemId);
+
         var allRecipes = await GetRecipesAsync();
 
         switch (type)

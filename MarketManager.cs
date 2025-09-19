@@ -2,11 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Backend;
 using Backend.Business;
 using BotLib.Generated;
+using MarketBot.Domain;
 using MarketBot.Interfaces;
 using Microsoft.Extensions.Logging;
 using NQ;
+using NQutils.Def;
 
 namespace MarketBot
 {
@@ -23,6 +26,7 @@ namespace MarketBot
         private readonly CraftingQueue _craftingQueue;
         private readonly IPriceService _priceService;
         private readonly BotConnectionManager _botConnectionManager;
+        private readonly IGameplayBank _gameplayBank;
 
         private int _currentMarketIndex = 0;
         private int _currentItemIndex = 0;
@@ -39,7 +43,8 @@ namespace MarketBot
             MarketService marketService,
             CraftingQueue craftingQueue,
             IPriceService priceService,
-            BotConnectionManager botConnectionManager
+            BotConnectionManager botConnectionManager,
+            IGameplayBank gameplayBank
             )
         {
             _planet = planet;
@@ -52,6 +57,7 @@ namespace MarketBot
             _craftingQueue = craftingQueue;
             _priceService = priceService;
             _botConnectionManager = botConnectionManager;
+            _gameplayBank = gameplayBank;
 
             _marketList = _dataAccessor.FetchMarketListAsync(_planet).Result;
         }
@@ -99,7 +105,7 @@ namespace MarketBot
                               return slots.content.Select(slot => new Item{
                                 Id = slot.content.Ref.Type,
                                 ItemType = Mod.bot.GameplayBank.GetDefinition(slot.content.Ref.Type).GetStaticPropertyOpt("inventoryType").stringValue,
-                                Quantity = slot.quantity.quantity
+                                RawQuantity = slot.quantity.quantity  // Bot inventory already provides raw quantities
                               });
                           },
                               _botConnectionManager.IsDisconnectedException,
@@ -110,19 +116,26 @@ namespace MarketBot
             {
                 try
                 {
+                    // Convert raw quantity to display for logging
+                    var displayQuantity = ConvertRawToDisplay(item.Id, item.RawQuantity);
+                    
                     // In dry-run mode, CreateItem will be logged but not executed at MarketService layer
                     if (_configService.Config.Development.DryRun)
                     {
-                        _logger.LogInformation("[DRY-RUN] ProcessBotInventory: Processing bot inventory item {ItemId} (Quantity: {Quantity}, Type: {ItemType})", 
-                            item.Id, item.Quantity, item.ItemType);
+                        _logger.LogInformation("[DRY-RUN] ProcessBotInventory: Processing bot inventory item {ItemId} (Display: {DisplayQuantity}, Raw: {RawQuantity}, Type: {ItemType})", 
+                            item.Id, displayQuantity, item.RawQuantity, item.ItemType);
                     }
                     
-                    await _marketService.CreateItem(item.Id, item.Quantity * -1);
-                    await _inventoryService.AddUpdate(item.Id, item.Quantity, null);
+                    // Remove item from world using raw quantity (negative to remove)
+                    await _marketService.CreateItem(item.Id, item.RawQuantity * -1);
+                    
+                    // Add to virtual inventory using raw quantity
+                    await _inventoryService.AddUpdateRaw(item.Id, item.RawQuantity, null);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, $"Unable to move item ({item.Id}, {item.Quantity}, {item.ItemType}) from bot inventory to virtual inventory.");
+                    var displayQuantity = ConvertRawToDisplay(item.Id, item.RawQuantity);
+                    _logger.LogError(ex, $"Unable to move item ({item.Id}, Display: {displayQuantity}, Raw: {item.RawQuantity}, {item.ItemType}) from bot inventory to virtual inventory.");
                 }
             }
         }
@@ -415,6 +428,21 @@ namespace MarketBot
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Converts raw fixed-point quantity to display volume/count for logging purposes.
+        /// For materials: converts from fixed-point to volume (raw / 2^24).
+        /// For non-materials: returns count directly.
+        /// </summary>
+        private long ConvertRawToDisplay(ulong itemId, long rawQuantity)
+        {
+            // Check if it's a material using GameplayBank
+            if (_gameplayBank.GetDefinition(itemId).BaseObject is Material)
+            {
+                return rawQuantity / (long)QuantityConstants.QuantityToVolumeCoeff;
+            }
+            return rawQuantity;
         }
     }
 }

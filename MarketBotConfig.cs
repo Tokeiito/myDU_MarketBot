@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
+using MarketBot.Domain.WorldModel;
+using Microsoft.Extensions.Logging;
 
 public class MarketBotConfig
 {
@@ -7,6 +9,10 @@ public class MarketBotConfig
     public MarketOverlordSettings MarketOverlord { get; set;} = new MarketOverlordSettings();
 
     public DevelopmentSettings Development { get; set; } = new DevelopmentSettings();
+
+    public WorldModelSettings WorldModel { get; set; } = new WorldModelSettings();
+
+    public LoggingSettings Logging { get; set; } = new LoggingSettings();
 }
 
 public class MarketSettings
@@ -38,4 +44,37 @@ public class MarketOverlordQuantities
 public class DevelopmentSettings
 {
     public bool DryRun { get; set; } = false; // Default to false for production safety
+    
+    /// <summary>
+    /// When true, performs a complete cleanup of existing Redis inventory data on startup.
+    /// Creates a timestamped backup before deletion. USE WITH CAUTION - this deletes all inventory data.
+    /// This should be set to true once before switching from DryRun=true to DryRun=false to ensure
+    /// quantity format consistency with the new fixed-point quantity system.
+    /// </summary>
+    public bool CleanInventoryData { get; set; } = false;
+}
+
+/// <summary>
+/// Configuration settings for enhanced logging with console output and per-service log levels
+/// </summary>
+public class LoggingSettings
+{
+    /// <summary>
+    /// Whether to enable console logging output
+    /// </summary>
+    public bool LogToConsole { get; set; } = false;
+
+    /// <summary>
+    /// Default console log level for all services
+    /// Supported values: "Trace", "Debug", "Information", "Warning", "Error", "Critical", "Off"
+    /// </summary>
+    public string ConsoleLogLevel { get; set; } = "Information";
+
+    /// <summary>
+    /// Per-service log levels for console output
+    /// Key: Full service class name (e.g., "MarketBot.Services.WorldModel.ResourceGenerationService")
+    /// Value: Log level ("Trace", "Debug", "Information", "Warning", "Error", "Critical", "Off")
+    /// "Off" completely disables console output for that service
+    /// </summary>
+    public Dictionary<string, string> ServiceLogLevels { get; set; } = new Dictionary<string, string>();
 }

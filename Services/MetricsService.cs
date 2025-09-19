@@ -96,14 +96,47 @@ namespace MarketBot.Services
             try
             {
                 var gauge = _gauges.GetOrAdd(name, n => 
-                    Metrics.CreateGauge($"marketbot_{n}", $"MarketBot metric: {n}", 
-                                      new string[] { "market_id", "item_id" }));
+                {
+                    var labelNames = GetLabelNamesForMetric(n);
+                    return Metrics.CreateGauge($"marketbot_{n}", $"MarketBot metric: {n}", labelNames);
+                });
                 gauge.WithLabels(labels).Set(value);
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to set gauge metric {MetricName} with labels", name);
             }
+        }
+
+        private string[] GetLabelNamesForMetric(string metricName)
+        {
+            return metricName switch
+            {
+                // WorldModel metrics with specific label schemas
+                "worldmodel_lai_by_market" => new[] { "planet_id", "market_id", "resource_id" },
+                "worldmodel_generation_by_market" => new[] { "planet_id", "market_id", "resource_id" },
+                "worldmodel_generation_by_planet" => new[] { "planet_id", "resource_id" },
+                "worldmodel_generation_events_by_market" => new[] { "planet_id", "market_id" },
+                "worldmodel_local_resource_capacity_utilization" => new[] { "planet_id", "market_id", "resource_id" },
+                "worldmodel_generation_throttled_total" => new[] { "planet_id", "market_id", "resource_id" },
+                "worldmodel_local_resource_quantity" => new[] { "planet_id", "market_id", "resource_id" },
+                
+                // WorldModel metrics without labels
+                "worldmodel_update_cycles_total" => new string[0],
+                "worldmodel_resource_generation_total" => new string[0],
+                "worldmodel_generation_events_total" => new string[0],
+                
+                // Legacy WorldModel metrics (for backward compatibility)
+                "worldmodel_lai_values" => new[] { "planet_id", "resource_id" },
+                "worldmodel_resources_per_planet" => new[] { "planet_id" },
+                
+                // Inventory metrics with specific label schemas
+                "inventory_unique_items_per_market" => new[] { "market_id" },
+                "inventory_item_quantity" => new[] { "market_id", "item_id" },
+                
+                // Default for other metrics
+                _ => new[] { "market_id", "item_id" }
+            };
         }
 
         public void SetComplexMetric(string name, double value, TimeSpan? ttl = null)

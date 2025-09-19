@@ -1,0 +1,270 @@
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using MarketBot.Interfaces;
+using Microsoft.Extensions.Logging;
+using StackExchange.Redis;
+
+namespace MarketBot.Scripts
+{
+    /// <summary>
+    /// Script to clean existing Redis inventory data before switching out of dry-run mode.
+    /// This prevents format conflicts between old data and the new fixed-point quantity system.
+    /// </summary>
+    public class CleanInventoryDataScript
+    {
+        private readonly IDatabase _redisDatabase;
+        private readonly ILogger<CleanInventoryDataScript> _logger;
+
+        public CleanInventoryDataScript(IDatabase redisDatabase, ILogger<CleanInventoryDataScript> logger)
+        {
+            _redisDatabase = redisDatabase;
+            _logger = logger;
+        }
+
+        /// <summary>
+        /// Cleans all inventory data from Redis.
+        /// This includes both global and market-specific inventories.
+        /// </summary>
+        public async Task CleanAllInventoryData()
+        {
+            _logger.LogInformation("Starting inventory data cleanup...");
+
+            try
+            {
+                // Clean global inventory
+                await CleanGlobalInventory();
+
+                // Clean market-specific inventories (markets 1-5 as seen in InventoryService)
+                for (ulong marketId = 1; marketId <= 5; marketId++)
+                {
+                    await CleanMarketInventory(marketId);
+                }
+
+                _logger.LogInformation("Inventory data cleanup completed successfully.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to clean inventory data");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Cleans the global inventory data.
+        /// </summary>
+        private async Task CleanGlobalInventory()
+        {
+            const string globalKey = "inventory:global:items";
+            
+            _logger.LogInformation("Cleaning global inventory data...");
+            
+            // Check if key exists before deletion
+            bool exists = await _redisDatabase.KeyExistsAsync(globalKey);
+            if (exists)
+            {
+                // Get count before deletion for logging
+                long itemCount = await _redisDatabase.HashLengthAsync(globalKey);
+                
+                // Delete the entire hash
+                bool deleted = await _redisDatabase.KeyDeleteAsync(globalKey);
+                
+                if (deleted)
+                {
+                    _logger.LogInformation("Deleted global inventory with {ItemCount} items", itemCount);
+                }
+                else
+                {
+                    _logger.LogWarning("Failed to delete global inventory key");
+                }
+            }
+            else
+            {
+                _logger.LogInformation("Global inventory key does not exist, nothing to clean");
+            }
+        }
+
+        /// <summary>
+        /// Cleans inventory data for a specific market.
+        /// </summary>
+        /// <param name="marketId">The market ID to clean</param>
+        private async Task CleanMarketInventory(ulong marketId)
+        {
+            string marketKey = $"inventory:{marketId}:items";
+            
+            _logger.LogInformation("Cleaning inventory data for market {MarketId}...", marketId);
+            
+            // Check if key exists before deletion
+            bool exists = await _redisDatabase.KeyExistsAsync(marketKey);
+            if (exists)
+            {
+                // Get count before deletion for logging
+                long itemCount = await _redisDatabase.HashLengthAsync(marketKey);
+                
+                // Delete the entire hash
+                bool deleted = await _redisDatabase.KeyDeleteAsync(marketKey);
+                
+                if (deleted)
+                {
+                    _logger.LogInformation("Deleted market {MarketId} inventory with {ItemCount} items", marketId, itemCount);
+                }
+                else
+                {
+                    _logger.LogWarning("Failed to delete inventory key for market {MarketId}", marketId);
+                }
+            }
+            else
+            {
+                _logger.LogInformation("Market {MarketId} inventory key does not exist, nothing to clean", marketId);
+            }
+        }
+
+        /// <summary>
+        /// Safely cleans inventory data with backup option.
+        /// Creates a backup before deletion and provides rollback capability.
+        /// </summary>
+        /// <param name="createBackup">Whether to create a backup before cleaning</param>
+        public async Task SafeCleanWithBackup(bool createBackup = true)
+        {
+            if (createBackup)
+            {
+                await CreateInventoryBackup();
+            }
+
+            await CleanAllInventoryData();
+        }
+
+        /// <summary>
+        /// Creates a backup of current inventory data before cleaning.
+        /// </summary>
+        private async Task CreateInventoryBackup()
+        {
+            string timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
+            
+            _logger.LogInformation("Creating inventory backup with timestamp {Timestamp}...", timestamp);
+
+            try
+            {
+                // Backup global inventory
+                await BackupInventoryKey("inventory:global:items", $"backup:{timestamp}:inventory:global:items");
+
+                // Backup market inventories
+                for (ulong marketId = 1; marketId <= 5; marketId++)
+                {
+                    await BackupInventoryKey(
+                        $"inventory:{marketId}:items", 
+                        $"backup:{timestamp}:inventory:{marketId}:items");
+                }
+
+                _logger.LogInformation("Inventory backup created successfully with timestamp {Timestamp}", timestamp);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create inventory backup");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Backs up a single inventory key.
+        /// </summary>
+        private async Task BackupInventoryKey(string sourceKey, string backupKey)
+        {
+            bool exists = await _redisDatabase.KeyExistsAsync(sourceKey);
+            if (exists)
+            {
+                // Get all hash entries
+                var hashEntries = await _redisDatabase.HashGetAllAsync(sourceKey);
+                
+                if (hashEntries.Length > 0)
+                {
+                    // Store in backup key
+                    await _redisDatabase.HashSetAsync(backupKey, hashEntries);
+                    
+                    // Set expiration for backup (30 days)
+                    await _redisDatabase.KeyExpireAsync(backupKey, TimeSpan.FromDays(30));
+                    
+                    _logger.LogDebug("Backed up {Count} items from {SourceKey} to {BackupKey}", 
+                        hashEntries.Length, sourceKey, backupKey);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Lists available inventory backups.
+        /// </summary>
+        public Task<string[]> ListAvailableBackups()
+        {
+            var server = _redisDatabase.Multiplexer.GetServer(_redisDatabase.Multiplexer.GetEndPoints()[0]);
+            var backupKeys = server.Keys(pattern: "backup:*:inventory:*");
+            
+            var backups = new List<string>();
+            foreach (var key in backupKeys)
+            {
+                backups.Add(key);
+            }
+            
+            return Task.FromResult(backups.ToArray());
+        }
+
+        /// <summary>
+        /// Restores inventory data from a specific backup.
+        /// USE WITH CAUTION: This will overwrite current inventory data.
+        /// </summary>
+        /// <param name="backupTimestamp">The timestamp of the backup to restore</param>
+        public async Task RestoreFromBackup(string backupTimestamp)
+        {
+            _logger.LogWarning("RESTORING INVENTORY DATA FROM BACKUP {BackupTimestamp} - THIS WILL OVERWRITE CURRENT DATA", backupTimestamp);
+
+            try
+            {
+                // Restore global inventory
+                await RestoreInventoryKey($"backup:{backupTimestamp}:inventory:global:items", "inventory:global:items");
+
+                // Restore market inventories
+                for (ulong marketId = 1; marketId <= 5; marketId++)
+                {
+                    await RestoreInventoryKey(
+                        $"backup:{backupTimestamp}:inventory:{marketId}:items", 
+                        $"inventory:{marketId}:items");
+                }
+
+                _logger.LogInformation("Successfully restored inventory data from backup {BackupTimestamp}", backupTimestamp);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to restore inventory data from backup {BackupTimestamp}", backupTimestamp);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Restores a single inventory key from backup.
+        /// </summary>
+        private async Task RestoreInventoryKey(string backupKey, string targetKey)
+        {
+            bool exists = await _redisDatabase.KeyExistsAsync(backupKey);
+            if (exists)
+            {
+                // Get all backup data
+                var hashEntries = await _redisDatabase.HashGetAllAsync(backupKey);
+                
+                if (hashEntries.Length > 0)
+                {
+                    // Clear existing data
+                    await _redisDatabase.KeyDeleteAsync(targetKey);
+                    
+                    // Restore data
+                    await _redisDatabase.HashSetAsync(targetKey, hashEntries);
+                    
+                    _logger.LogDebug("Restored {Count} items from {BackupKey} to {TargetKey}", 
+                        hashEntries.Length, backupKey, targetKey);
+                }
+            }
+            else
+            {
+                _logger.LogWarning("Backup key {BackupKey} does not exist", backupKey);
+            }
+        }
+    }
+}

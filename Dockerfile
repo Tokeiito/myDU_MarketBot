@@ -12,8 +12,8 @@ RUN cd /source && dotnet publish --self-contained \
 
 FROM debian:bookworm AS release
 RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y libcurl4 libgoogle-perftools4 \
-  libhiredis0.14 libpq5 libicu72
-LABEL nqcomponent orleans
+  libhiredis0.14 libpq5 libicu72 curl
+LABEL nqcomponent=orleans
 COPY --from=nq_server_build /install/Mod /Mod
 WORKDIR /Mod
 ENTRYPOINT ["/Mod/MarketBot", "/config/dual.yaml","/Mod/config.json"]

@@ -49,16 +49,16 @@ services:
           basicAuth: false
           isDefault: false
           version: 1
-          editable: false
+          editable: true
         - name: Prometheus (DU Server)
           type: prometheus
           access: proxy
           orgId: 1
-          url: http://dualuniverseserver-prometheus-1:9090
+          url: http://prometheus:9090
           basicAuth: false
           isDefault: true
           version: 1
-          editable: false
+          editable: true
           jsonData:
             timeInterval: '30s'
             queryTimeout: '60s'
