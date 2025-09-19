@@ -12,6 +12,7 @@ namespace MarketBot.Services
     public class PriceService : IPriceService
     {
         private readonly IRecipeService _recipeService;
+        private readonly IResourceDefinitionService _resourceDefinitionService;
         private readonly ILogger<PriceService> _logger;
         private readonly ConfigService _configService;
         private readonly MarketService _marketService;
@@ -22,12 +23,14 @@ namespace MarketBot.Services
 
         public PriceService(
             IRecipeService recipeService,
+            IResourceDefinitionService resourceDefinitionService,
             ILogger<PriceService> logger,
             ConfigService configService,
             MarketService marketService
             )
         {
             _recipeService = recipeService;
+            _resourceDefinitionService = resourceDefinitionService;
             _logger = logger;
             _configService = configService;
             _marketService = marketService;
@@ -47,7 +50,9 @@ namespace MarketBot.Services
                 return cachedPrice.Price;
             }
 
-            var type = await _recipeService.GetType(itemId);
+            // Check if item is a resource using ResourceDefinitionService
+            var resourceDefinition = await GetResourceDefinitionAsync(itemId);
+            var isResource = resourceDefinition != null;
 
             // Step 1: Fetch market orders for the item
             var orders = await _marketService.GetOrders(itemId, marketId);
@@ -64,14 +69,22 @@ namespace MarketBot.Services
 
             long price;
 
-            if (type == ItemType.Resource)
+            if (isResource)
             {
-                var tier = await _recipeService.GetTier(itemId);
+                var tier = resourceDefinition.Tier;
                 // For resources, fallback to baseline if no valid orders
                 if (medianBuyPrice == 0 || medianSellPrice == 0)
                 {
-                    _logger.LogWarning($"No valid buy or sell orders found for item {itemId} in market {marketId}, using baseline price.");
-                    return _configService.Config.MarketOverlord.OreBaselinePrices[tier];
+                    _logger.LogWarning($"No valid buy or sell orders found for resource {itemId} (tier {tier}) in market {marketId}, using baseline price.");
+                    if (_configService.Config.MarketOverlord.OreBaselinePrices.TryGetValue(tier, out var baselinePrice))
+                    {
+                        return baselinePrice;
+                    }
+                    else
+                    {
+                        _logger.LogError($"No baseline price configured for resource tier {tier}, using default price of 10");
+                        return 10; // Emergency fallback price
+                    }
                 }
                 // Otherwise, use the median price
                 return (medianBuyPrice + medianSellPrice) / 2;
@@ -80,7 +93,7 @@ namespace MarketBot.Services
             {
                 price = medianBuyPrice > 0 && medianSellPrice > 0
                     ? (medianBuyPrice + medianSellPrice) / 2 // Average between buy and sell prices
-                    : await GetRecursivePrice(itemId, marketId); ; // Fallback to baseline price if no valid orders
+                    : await GetRecursivePrice(itemId, marketId); // Fallback to recursive recipe-based pricing
             }
             // Store the calculated price in the cache
             _priceCache[(itemId, marketId)] = (price, DateTime.UtcNow);
@@ -169,6 +182,18 @@ namespace MarketBot.Services
                 // If even, return the average of the two middle elements
                 return (prices[middleIndex - 1] + prices[middleIndex]) / 2;
             }
+        }
+
+        /// <summary>
+        /// Get resource definition for the given item ID if it's a resource (ore or plasma).
+        /// Returns null if the item is not a resource.
+        /// </summary>
+        /// <param name="itemId">The item ID to check</param>
+        /// <returns>ResourceDefinition if item is a resource, null otherwise</returns>
+        private async Task<MarketBot.Domain.ResourceDefinition> GetResourceDefinitionAsync(ulong itemId)
+        {
+            var allResources = await _resourceDefinitionService.GetAllAsync();
+            return allResources.FirstOrDefault(r => r.Id == itemId);
         }
     }
 }

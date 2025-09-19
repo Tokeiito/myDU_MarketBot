@@ -1,22 +1,24 @@
+using System;
+
 public class Item
 {
     public ulong Id { get; set; }
     public string ItemType { get; set; }
-    private long _quantity;
-
+    
+    /// <summary>
+    /// Raw quantity as stored in the database.
+    /// For materials, this is the volume multiplied by MATERIAL_MULTIPLIER.
+    /// For non-materials, this equals the display quantity.
+    /// </summary>
+    public long RawQuantity { get; set; }
+    
+    /// <summary>
+    /// Legacy property for backward compatibility.
+    /// Returns RawQuantity directly - callers should migrate to using RawQuantity or DisplayQuantity explicitly.
+    /// </summary>
     public long Quantity
     {
-        get => _quantity;
-        set
-        {
-            if (ItemType == "material")
-            {
-                _quantity = value << 24;
-            }
-            else
-            {
-                _quantity = value;
-            }
-        }
+        get => RawQuantity;
+        set => RawQuantity = value;
     }
 }

@@ -1,8 +1,11 @@
 using MarketBot.Interfaces;
 using MarketBot.Services;
+using MarketBot.Services.WorldModel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
+using Npgsql;
 
 namespace MarketBot
 {
@@ -38,6 +41,9 @@ namespace MarketBot
             services.AddSingleton<MarketService>();
             services.AddSingleton<CraftingQueueService>();
 
+            // PostgreSQL read-only service
+            services.AddSingleton<IPostgresReadService, PostgresReadService>();
+
             services.AddSingleton<IMarketOverlord, MarketOverlord>();
             services.AddSingleton<ITickService, TickService>();
             services.AddSingleton<IInventoryService, InventoryService>();
@@ -47,8 +53,24 @@ namespace MarketBot
             services.AddSingleton<IMetricsService, MetricsService>();
             services.AddSingleton<BackgroundMetricsCalculator>();
             
+            // Register World Model services - Let DI handle constructor injection
+            services.AddSingleton<IPlanetaryResourceService, PlanetaryResourceService>();
+            services.AddSingleton<ILAIStateService, LAIStateService>();
+            services.AddSingleton<LAIEngine>();
+            services.AddSingleton<WorldModelMetricsService>();
+            services.AddSingleton<IInventoryCapacityService, InventoryCapacityService>();
+            services.AddSingleton<ResourceGenerationService>();
+            services.AddSingleton<IWorldModelService, WorldModelService>();
+            
             // Explicitly register services as IMetricsProvider so they can be discovered
             services.AddSingleton<IMetricsProvider>(provider => provider.GetRequiredService<IInventoryService>() as IMetricsProvider);
+            services.AddSingleton<IMetricsProvider>(provider => provider.GetRequiredService<WorldModelMetricsService>());
+
+            // Resource definitions (TTL = restart, in-memory)
+            services.AddSingleton<IResourceDefinitionService, ResourceDefinitionService>();
+            
+            // Planet service (TTL = restart, in-memory)
+            services.AddSingleton<IPlanetService, PlanetService>();
 
             return services;
         }

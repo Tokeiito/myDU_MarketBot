@@ -11,6 +11,7 @@ using BotLib.Protocols;
 using BotLib.Protocols.Queuing;
 using MarketBot;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NQ;
 using NQ.Router;
 using NQutils;
@@ -70,15 +71,47 @@ public class Mod
             .AddSingleton<Backend.Storage.IItemStorageService, Backend.Storage.ItemStorageService>()
             .AddSingleton<IRecipes, Recipes>();
 
-
-
         services.AddMarketBot(configPath);
 
         var sp = services.BuildServiceProvider();
         serviceProvider = sp;
+        
+        // Configure MarketBot-specific logging after services are built
+        var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+        var configService = sp.GetRequiredService<ConfigService>();
+        MarketBot.Services.LoggingConfigurationService.ConfigureMarketBotLogging(loggerFactory, configService);
+        
         ClientExtensions.SetSingletons(sp);
         ClientExtensions.UseFactory(sp.GetRequiredService<IDuClientFactory>());
         await serviceProvider.StartServices();
+
+        // Validate DB connectivity early and fail fast
+        try
+        {
+            var pg = serviceProvider.GetRequiredService<MarketBot.Interfaces.IPostgresReadService>() as MarketBot.Services.PostgresReadService;
+            if (pg != null)
+            {
+                await pg.ValidateConnectivityAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to connect to PostgreSQL: {ex}");
+            throw; // Fail fast
+        }
+
+        // Warm up resource definitions cache (TTL = restart)
+        try
+        {
+            var res = serviceProvider.GetRequiredService<MarketBot.Interfaces.IResourceDefinitionService>();
+            await res.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to load resource definitions: {ex}");
+            throw; // Fail fast
+        }
+
         orleans = serviceProvider.GetRequiredService<IClusterClient>();
         dataAccessor = serviceProvider.GetRequiredService<IDataAccessor>();
 

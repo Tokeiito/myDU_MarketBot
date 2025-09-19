@@ -8,6 +8,7 @@
         "TickInSeconds": 60,
         "OperationPlanets": [ 2 ],
         "OreBaselinePrices": {
+            "0": 15,
             "1": 25,
             "2": 35,
             "3": 45,
@@ -155,7 +156,60 @@
             }
         }
     },
+    "WorldModel": {
+        "DefaultResourceTierBaselines": {
+            "1": 1.0,
+            "2": 0.8,
+            "3": 0.6,
+            "4": 0.4,
+            "5": 0.2
+        },
+        "PlanetConfigs": {
+            "2": {
+                "PlanetId": 2,
+                "Name": "Alioth",
+                "ResourceTierBaselines": {
+                    "1": 0.3,
+                    "2": 0.4,
+                    "3": 0.5,
+                    "4": 0.2,
+                    "5": 0.3
+                },
+                "RegionalVariance": 0.1,
+                "SeasonalStrength": 0.05,
+                "MarketIds": [3, 4, 29]
+            }
+        },
+        "LAISettings": {
+            "MeanReversionStrength": 0.1,
+            "VolatilityFactor": 0.02,
+            "MinLAI": 0.1,
+            "MaxLAI": 2.0,
+            "InitialLAI": 1.0
+        },
+        "GenerationSettings": {
+            "BaseRate": 100.0,
+            "MaxGenerationPerPlanetPerCycle": 10000,
+            "MaxGenerationPerResourcePerCycle": 1000,
+            "ResourceMultipliers": {},
+            "MarketMultipliers": {},
+            // Max locally generated resources per type per market (-1=unlimited, 0=none)
+            "LocalResourceCapacity": 1000
+        },
+        "LAIUpdateTicks": 60,
+        "ResourceGenerationTicks": 1, //default 30
+        "MaxGenerationEventsHistory": 1000,
+        "EnableDetailedLogging": true
+    },
+    "Logging": {
+        "LogToConsole": true,
+        "ConsoleLogLevel": "Debug",
+        "ServiceLogLevels": {
+            "MarketBot.Services.WorldModel.ResourceGenerationService": "Off"
+        }
+    },
     "Development": {
-        "DryRun": true
+        "DryRun": true,
+        "CleanInventoryData": false
     }
 }

@@ -38,6 +38,7 @@
     <Folder Include="Helpers\" />
     <Folder Include="lib\" />
     <Folder Include="logs\dev\" />
+    <Folder Include="monitoring\prometheus\" />
     <Folder Include="Properties\" />
   </ItemGroup>
 
