@@ -20,8 +20,8 @@ namespace MarketBot.Services.WorldModel
     private readonly ConfigService _configService;
     private readonly ILogger<WorldModelMetricsService> _logger;
     private readonly LAIEngine _laiEngine;
-    private readonly IInventoryService _inventoryService;
-    private readonly IInventoryCapacityService _capacityService;
+    private readonly IWarehouseService _inventoryService;
+    private readonly IWarehouseCapacityService _capacityService;
         
         // Counters for metrics (since we use gauge, track the counts manually)
         private long _updateCyclesCount = 0;
@@ -44,8 +44,8 @@ namespace MarketBot.Services.WorldModel
         ConfigService configService,
         LAIEngine laiEngine,
         ILogger<WorldModelMetricsService> logger,
-        IInventoryService inventoryService,
-        IInventoryCapacityService capacityService)
+        IWarehouseService inventoryService,
+        IWarehouseCapacityService capacityService)
         {
         _laiStateService = laiStateService ?? throw new ArgumentNullException(nameof(laiStateService));
         _planetaryResourceService = planetaryResourceService ?? throw new ArgumentNullException(nameof(planetaryResourceService));

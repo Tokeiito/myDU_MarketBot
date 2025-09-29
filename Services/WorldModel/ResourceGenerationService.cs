@@ -17,7 +17,7 @@ namespace MarketBot.Services.WorldModel
     /// </summary>
     public class ResourceGenerationService
     {
-    private readonly IInventoryService _inventoryService;
+    private readonly IWarehouseService _inventoryService;
     private readonly IPlanetaryResourceService _planetaryService;
     private readonly ILAIStateService _laiStateService;
     private readonly LAIEngine _laiEngine;
@@ -26,14 +26,14 @@ namespace MarketBot.Services.WorldModel
     private readonly WorldModelMetricsService _metricsService;
     private readonly IMetricsService _coreMetricsService;
     private readonly IGameplayBank _gameplayBank;
-    private readonly IInventoryCapacityService _capacityService;
+    private readonly IWarehouseCapacityService _capacityService;
 
         // Thread-safe cache for generation events
         private readonly ConcurrentQueue<ResourceGenerationEvent> _generationEvents;
         private readonly object _generationLock = new object();
 
     public ResourceGenerationService(
-        IInventoryService inventoryService,
+        IWarehouseService inventoryService,
         IPlanetaryResourceService planetaryService,
         ILAIStateService laiStateService,
         LAIEngine laiEngine,
@@ -42,7 +42,7 @@ namespace MarketBot.Services.WorldModel
         WorldModelMetricsService metricsService,
         IMetricsService coreMetricsService,
         IGameplayBank gameplayBank,
-        IInventoryCapacityService capacityService)
+        IWarehouseCapacityService capacityService)
         {
         _inventoryService = inventoryService ?? throw new ArgumentNullException(nameof(inventoryService));
         _planetaryService = planetaryService ?? throw new ArgumentNullException(nameof(planetaryService));

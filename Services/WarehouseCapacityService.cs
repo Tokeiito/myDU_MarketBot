@@ -8,20 +8,20 @@ namespace MarketBot.Services
 {
     /// <summary>
     /// Service for managing local resource capacity limits and generation throttling.
-    /// Follows InventoryService patterns for unit handling and Redis storage.
+    /// Follows warehouseService patterns for unit handling and Redis storage.
     /// </summary>
-    public class InventoryCapacityService : IInventoryCapacityService
+    public class WarehouseCapacityService : IWarehouseCapacityService
     {
-        private readonly IInventoryService _inventoryService;
+        private readonly IWarehouseService _warehouseService;
         private readonly ConfigService _configService;
-        private readonly ILogger<InventoryCapacityService> _logger;
+        private readonly ILogger<WarehouseCapacityService> _logger;
 
-        public InventoryCapacityService(
-            IInventoryService inventoryService,
+        public WarehouseCapacityService(
+            IWarehouseService warehouseService,
             ConfigService configService,
-            ILogger<InventoryCapacityService> logger)
+            ILogger<WarehouseCapacityService> logger)
         {
-            _inventoryService = inventoryService ?? throw new ArgumentNullException(nameof(inventoryService));
+            _warehouseService = warehouseService ?? throw new ArgumentNullException(nameof(warehouseService));
             _configService = configService ?? throw new ArgumentNullException(nameof(configService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
@@ -52,7 +52,7 @@ namespace MarketBot.Services
                 }
                 
                 // Check current local quantity in display units
-                var currentDisplayQuantity = await _inventoryService.GetLocalResourceDisplay(resourceId, marketId);
+                var currentDisplayQuantity = await _warehouseService.GetLocalResourceDisplay(resourceId, marketId);
                 
                 // Check if adding the new quantity would exceed capacity
                 var projectedQuantity = currentDisplayQuantity + displayQuantity;
@@ -94,7 +94,7 @@ namespace MarketBot.Services
                     return 1.0; // No generation allowed = 100% utilization
                 }
                 
-                var currentDisplayQuantity = await _inventoryService.GetLocalResourceDisplay(resourceId, marketId);
+                var currentDisplayQuantity = await _warehouseService.GetLocalResourceDisplay(resourceId, marketId);
                 var utilization = (double)currentDisplayQuantity / capacity;
                 
                 // Clamp to valid range (can exceed 1.0 if imports pushed us over capacity)

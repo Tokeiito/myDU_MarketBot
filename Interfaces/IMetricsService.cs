@@ -17,6 +17,14 @@ namespace MarketBot.Interfaces
         void Increment(string name, double value = 1);
         
         /// <summary>
+        /// Increment a counter metric with labels by the specified value
+        /// </summary>
+        /// <param name="name">Metric name</param>
+        /// <param name="labels">Label values</param>
+        /// <param name="value">Value to increment by (default: 1)</param>
+        void Increment(string name, string[] labels, double value = 1);
+        
+        /// <summary>
         /// Decrement a counter metric by the specified value
         /// </summary>
         /// <param name="name">Metric name</param>
