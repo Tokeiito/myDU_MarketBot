@@ -12,7 +12,7 @@ namespace MarketBot
         private readonly ITickService _tickService;
         private readonly IRecipeService _recipeService;
         private readonly IDataAccessor _dataAccessor;
-        private readonly IInventoryService _inventoryService;
+        private readonly IWarehouseService _inventoryService;
         private readonly MarketService _marketService;
         private readonly ILogger<MarketOverlord> _logger;
         private readonly ConfigService _configService;
@@ -27,7 +27,7 @@ namespace MarketBot
             IRecipeService recipeService,
             ILogger<MarketOverlord> logger,
             ConfigService configService,
-            IInventoryService inventoryService,
+            IWarehouseService inventoryService,
             MarketService marketService,
             CraftingQueue craftingQueue,
             IPriceService priceService,

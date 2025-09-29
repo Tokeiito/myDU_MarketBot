@@ -6,7 +6,7 @@ namespace MarketBot.Interfaces
     /// Service for managing local resource capacity limits and generation throttling.
     /// Prevents infinite resource accumulation while maintaining operational workflows.
     /// </summary>
-    public interface IInventoryCapacityService
+    public interface IWarehouseCapacityService
     {
         /// <summary>
         /// Checks if resource generation is allowed based on current local capacity.

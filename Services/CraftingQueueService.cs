@@ -11,14 +11,14 @@ public class CraftingQueueService : ITickable
     private readonly ILogger<CraftingQueueService> _logger;
     private readonly ConfigService _configService;
     private readonly ITickService _tickService;
-    private readonly IInventoryService _inventoryService;
+    private readonly IWarehouseService _inventoryService;
 
     public CraftingQueueService(
         ILogger<CraftingQueueService> logger,
         CraftingQueue craftingQueue,
         ConfigService configService,
         ITickService tickService,
-        IInventoryService inventoryService
+        IWarehouseService inventoryService
         )
     {
         _craftingQueue = craftingQueue;

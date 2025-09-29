@@ -8,8 +8,14 @@ using StackExchange.Redis;
 namespace MarketBot.Scripts
 {
     /// <summary>
-    /// Script to clean existing Redis inventory data before switching out of dry-run mode.
-    /// This prevents format conflicts between old data and the new fixed-point quantity system.
+    /// Script to clean existing Redis inventory data before switching between dry-run and production modes.
+    /// This prevents format conflicts and ensures clean state transitions between modes.
+    /// 
+    /// Use cases:
+    /// - Before switching from dry-run to production mode
+    /// - Before switching from production to dry-run mode  
+    /// - When upgrading quantity format systems
+    /// - When resolving Redis data corruption
     /// </summary>
     public class CleanInventoryDataScript
     {
@@ -39,7 +45,11 @@ namespace MarketBot.Scripts
                 for (ulong marketId = 1; marketId <= 5; marketId++)
                 {
                     await CleanMarketInventory(marketId);
+                    await CleanMarketWarehouseLots(marketId);
                 }
+                
+                // Clean global warehouse lots
+                await CleanGlobalWarehouseLots();
 
                 _logger.LogInformation("Inventory data cleanup completed successfully.");
             }
@@ -235,6 +245,182 @@ namespace MarketBot.Scripts
             {
                 _logger.LogError(ex, "Failed to restore inventory data from backup {BackupTimestamp}", backupTimestamp);
                 throw;
+            }
+        }
+
+        /// <summary>
+        /// Cleans warehouse lots for a specific market.
+        /// </summary>
+        /// <param name="marketId">The market ID to clean</param>
+        private async Task CleanMarketWarehouseLots(ulong marketId)
+        {
+            string lotKeyPattern = $"lots:{marketId}:*";
+            
+            _logger.LogInformation("Cleaning warehouse lots for market {MarketId}...", marketId);
+            
+            try
+            {
+                var server = _redisDatabase.Multiplexer.GetServer(_redisDatabase.Multiplexer.GetEndPoints()[0]);
+                var lotKeys = server.Keys(pattern: lotKeyPattern);
+                
+                var deletedCount = 0;
+                foreach (var key in lotKeys)
+                {
+                    if (await _redisDatabase.KeyDeleteAsync(key))
+                    {
+                        deletedCount++;
+                    }
+                }
+                
+                if (deletedCount > 0)
+                {
+                    _logger.LogInformation("Deleted {DeletedCount} warehouse lot keys for market {MarketId}", deletedCount, marketId);
+                }
+                else
+                {
+                    _logger.LogInformation("No warehouse lot keys found for market {MarketId}", marketId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to clean warehouse lots for market {MarketId}", marketId);
+            }
+        }
+        
+        /// <summary>
+        /// Cleans global warehouse lots.
+        /// </summary>
+        private async Task CleanGlobalWarehouseLots()
+        {
+            string lotKeyPattern = "lots:global:*";
+            
+            _logger.LogInformation("Cleaning global warehouse lots...");
+            
+            try
+            {
+                var server = _redisDatabase.Multiplexer.GetServer(_redisDatabase.Multiplexer.GetEndPoints()[0]);
+                var lotKeys = server.Keys(pattern: lotKeyPattern);
+                
+                var deletedCount = 0;
+                foreach (var key in lotKeys)
+                {
+                    if (await _redisDatabase.KeyDeleteAsync(key))
+                    {
+                        deletedCount++;
+                    }
+                }
+                
+                if (deletedCount > 0)
+                {
+                    _logger.LogInformation("Deleted {DeletedCount} global warehouse lot keys", deletedCount);
+                }
+                else
+                {
+                    _logger.LogInformation("No global warehouse lot keys found");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to clean global warehouse lots");
+            }
+        }
+        
+        /// <summary>
+        /// Cleans all warehouse-related data including lots and summaries.
+        /// </summary>
+        public async Task CleanAllWarehouseData()
+        {
+            _logger.LogInformation("Starting comprehensive warehouse data cleanup...");
+            
+            try
+            {
+                // Clean existing inventory data
+                await CleanAllInventoryData();
+                
+                // Clean warehouse lots
+                await CleanAllWarehouseLots();
+                
+                // Clean warehouse summaries
+                await CleanWarehouseSummaries();
+                
+                _logger.LogInformation("Comprehensive warehouse data cleanup completed successfully.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to clean comprehensive warehouse data");
+                throw;
+            }
+        }
+        
+        /// <summary>
+        /// Cleans all warehouse lots across all markets.
+        /// </summary>
+        private async Task CleanAllWarehouseLots()
+        {
+            _logger.LogInformation("Cleaning all warehouse lots...");
+            
+            try
+            {
+                var server = _redisDatabase.Multiplexer.GetServer(_redisDatabase.Multiplexer.GetEndPoints()[0]);
+                var allLotKeys = server.Keys(pattern: "lots:*");
+                
+                var deletedCount = 0;
+                foreach (var key in allLotKeys)
+                {
+                    if (await _redisDatabase.KeyDeleteAsync(key))
+                    {
+                        deletedCount++;
+                    }
+                }
+                
+                if (deletedCount > 0)
+                {
+                    _logger.LogInformation("Deleted {DeletedCount} total warehouse lot keys", deletedCount);
+                }
+                else
+                {
+                    _logger.LogInformation("No warehouse lot keys found");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to clean all warehouse lots");
+            }
+        }
+        
+        /// <summary>
+        /// Cleans warehouse summaries.
+        /// </summary>
+        private async Task CleanWarehouseSummaries()
+        {
+            _logger.LogInformation("Cleaning warehouse summaries...");
+            
+            try
+            {
+                var server = _redisDatabase.Multiplexer.GetServer(_redisDatabase.Multiplexer.GetEndPoints()[0]);
+                var summaryKeys = server.Keys(pattern: "warehouse:summary:*");
+                
+                var deletedCount = 0;
+                foreach (var key in summaryKeys)
+                {
+                    if (await _redisDatabase.KeyDeleteAsync(key))
+                    {
+                        deletedCount++;
+                    }
+                }
+                
+                if (deletedCount > 0)
+                {
+                    _logger.LogInformation("Deleted {DeletedCount} warehouse summary keys", deletedCount);
+                }
+                else
+                {
+                    _logger.LogInformation("No warehouse summary keys found");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to clean warehouse summaries");
             }
         }
 

@@ -35,7 +35,7 @@ namespace MarketBot
             });
             services.AddSingleton<BotConnectionManager>();
             services.AddSingleton<ModMarketBot>();
-            services.AddSingleton<ConfigService>();
+            services.AddSingleton<IConfigService, ConfigService>();
             services.AddSingleton<CraftingQueue>();
             services.AddSingleton<IRecipeService, RecipeService>();
             services.AddSingleton<MarketService>();
@@ -46,7 +46,12 @@ namespace MarketBot
 
             services.AddSingleton<IMarketOverlord, MarketOverlord>();
             services.AddSingleton<ITickService, TickService>();
-            services.AddSingleton<IInventoryService, InventoryService>();
+            
+            // Warehouse services
+            services.AddSingleton<IWarehouseLotStorage, WarehouseLotStorage>();
+            services.AddSingleton<IWarehouseEventService, WarehouseEventService>();
+            services.AddSingleton<IWarehouseService, WarehouseService>();
+            
             services.AddSingleton<IPriceService, PriceService>();
             
             // Register metrics infrastructure
@@ -58,12 +63,12 @@ namespace MarketBot
             services.AddSingleton<ILAIStateService, LAIStateService>();
             services.AddSingleton<LAIEngine>();
             services.AddSingleton<WorldModelMetricsService>();
-            services.AddSingleton<IInventoryCapacityService, InventoryCapacityService>();
+            services.AddSingleton<IWarehouseCapacityService, WarehouseCapacityService>();
             services.AddSingleton<ResourceGenerationService>();
             services.AddSingleton<IWorldModelService, WorldModelService>();
             
             // Explicitly register services as IMetricsProvider so they can be discovered
-            services.AddSingleton<IMetricsProvider>(provider => provider.GetRequiredService<IInventoryService>() as IMetricsProvider);
+            services.AddSingleton<IMetricsProvider>(provider => provider.GetRequiredService<IWarehouseService>() as IMetricsProvider);
             services.AddSingleton<IMetricsProvider>(provider => provider.GetRequiredService<WorldModelMetricsService>());
 
             // Resource definitions (TTL = restart, in-memory)

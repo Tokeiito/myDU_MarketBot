@@ -12,6 +12,8 @@ public class MarketBotConfig
 
     public WorldModelSettings WorldModel { get; set; } = new WorldModelSettings();
 
+    public WarehouseSettings Warehouse { get; set; } = new WarehouseSettings();
+
     public LoggingSettings Logging { get; set; } = new LoggingSettings();
 }
 
@@ -77,4 +79,43 @@ public class LoggingSettings
     /// "Off" completely disables console output for that service
     /// </summary>
     public Dictionary<string, string> ServiceLogLevels { get; set; } = new Dictionary<string, string>();
+}
+
+/// <summary>
+/// Configuration settings for the warehouse lot management system
+/// </summary>
+ public class WarehouseSettings
+{
+    /// <summary>
+    /// Maximum number of lots allowed per item/market combination.
+    /// When this limit is reached, the system will merge the closest lots by unit cost.
+    /// Higher values provide more granular cost tracking but use more memory.
+    /// Lower values improve performance but reduce cost tracking precision.
+    /// </summary>
+    public int MaxLotsPerItem { get; set; } = 10;
+
+
+    /// <summary>
+    /// Cleanup interval for empty lots and maintenance operations (in minutes).
+    /// The system will periodically remove empty lots and perform housekeeping.
+    /// </summary>
+    public int CleanupIntervalMinutes { get; set; } = 30;
+
+    /// <summary>
+    /// Cache TTL for expensive cost calculations (in seconds).
+    /// Weighted average cost calculations are cached to improve performance.
+    /// </summary>
+    public int CostCalculationCacheTtlSeconds { get; set; } = 300;
+
+    /// <summary>
+    /// Enable detailed lot operation logging for debugging and auditing.
+    /// When true, logs lot creation, merging, and consumption operations.
+    /// </summary>
+    public bool EnableLotTracking { get; set; } = false;
+
+    /// <summary>
+    /// Metrics update interval for warehouse KPIs (in seconds).
+    /// Controls how frequently warehouse metrics are refreshed.
+    /// </summary>
+    public int MetricsUpdateIntervalSeconds { get; set; } = 60;
 }

@@ -2,8 +2,9 @@ using System;
 using System.Linq;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
+using MarketBot.Interfaces;
 
-public class ConfigService
+public class ConfigService : IConfigService
 {
     public MarketBotConfig Config { get; private set; }
 

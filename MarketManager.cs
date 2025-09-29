@@ -18,7 +18,7 @@ namespace MarketBot
         private readonly ulong _planet;
         private readonly IRecipeService _recipeService;
         private readonly IDataAccessor _dataAccessor;
-        private readonly IInventoryService _inventoryService;
+        private readonly IWarehouseService _inventoryService;
         private readonly MarketService _marketService;
         private readonly ILogger<MarketOverlord> _logger;
         private readonly ConfigService _configService;
@@ -39,7 +39,7 @@ namespace MarketBot
             ConfigService configService,
             IRecipeService recipeService,
             IDataAccessor dataAccessor,
-            IInventoryService inventoryService,
+            IWarehouseService inventoryService,
             MarketService marketService,
             CraftingQueue craftingQueue,
             IPriceService priceService,

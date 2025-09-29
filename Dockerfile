@@ -6,7 +6,7 @@ dpkg -i /tmp/packages-microsoft-prod.deb && \
 apt update && apt install -y dotnet-sdk-8.0
 
 COPY . /source
-RUN cd /source && dotnet publish --self-contained \
+RUN cd /source && dotnet publish MarketBot.csproj --self-contained \
     /nodeReuse:false -r linux-x64 \
     -p:UseSharedCompilation=false -c Release -o /install/Mod
 

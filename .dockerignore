@@ -1,0 +1,58 @@
+# Test projects and test files
+tests/
+*Tests/
+**/*test*
+**/*Test*
+**/test*
+**/Test*
+
+# Build output
+bin/
+obj/
+**/bin
+**/obj
+
+# IDE and editor files
+.vs/
+.vscode/
+*.user
+*.suo
+.idea/
+
+# Documentation and non-essential files
+*.md
+docs/
+TESTING_SUMMARY.md
+README.md
+
+# Git and source control
+.git/
+.gitignore
+.gitattributes
+
+# Temporary and cache files
+*.tmp
+*.temp
+*.log
+*.cache
+
+# Package manager files
+packages/
+node_modules/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Development configuration
+appsettings.Development.json
+launchSettings.json
+
+# Test coverage and analysis
+coverage/
+*.coverage
+TestResults/
+
+# NuGet packages
+*.nupkg
+*.snupkg

@@ -62,6 +62,23 @@ namespace MarketBot.Services
                 _logger.LogWarning(ex, "Failed to increment metric {MetricName}", name);
             }
         }
+        
+        public void Increment(string name, string[] labels, double value = 1)
+        {
+            try
+            {
+                var counter = _counters.GetOrAdd(name, n => 
+                {
+                    var labelNames = GetLabelNamesForMetric(n);
+                    return Metrics.CreateCounter($"marketbot_{n}", $"MarketBot metric: {n}", labelNames);
+                });
+                counter.WithLabels(labels).Inc(value);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to increment metric {MetricName} with labels", name);
+            }
+        }
 
         public void Decrement(string name, double value = 1)
         {
@@ -133,6 +150,21 @@ namespace MarketBot.Services
                 // Inventory metrics with specific label schemas
                 "inventory_unique_items_per_market" => new[] { "market_id" },
                 "inventory_item_quantity" => new[] { "market_id", "item_id" },
+                
+                // Warehouse metrics with specific label schemas
+                "warehouse_operations_total" => new[] { "mode" },
+                "warehouse_lot_operations_total" => new[] { "mode" },
+                "warehouse_consumption_operations_total" => new[] { "mode" },
+                "warehouse_events_items_added_total" => new[] { "mode" },
+                "warehouse_events_items_consumed_total" => new[] { "mode" },
+                "warehouse_events_lot_merged_total" => new[] { "mode" },
+                "warehouse_events_lot_created_total" => new[] { "mode" },
+                "warehouse_unique_items_per_market" => new[] { "market_id" },
+                "warehouse_lots_total" => new[] { "market_id" },
+                "warehouse_item_quantity" => new[] { "market_id", "item_id" },
+                "warehouse_total_value" => new[] { "market_id" },
+                "warehouse_cost_variance" => new[] { "market_id", "item_id" },
+                "warehouse_consumption_rate" => new[] { "market_id", "item_id" },
                 
                 // Default for other metrics
                 _ => new[] { "market_id", "item_id" }
